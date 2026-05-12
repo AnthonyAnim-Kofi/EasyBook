@@ -1,0 +1,649 @@
+import { useState } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Dimensions,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
+import { Bell, Edit3, ChevronRight } from "lucide-react-native";
+import { Image } from "expo-image";
+import { useRouter } from "expo-router";
+import BusinessTabBar from "@/components/BusinessTabBar";
+
+const PRIMARY = "#00A896";
+const { width } = Dimensions.get("window");
+
+const FILTER_TABS = ["Active", "Upcoming", "Request"];
+
+const bookings = [
+  {
+    id: "1",
+    customer: "Andy Coleman",
+    avatar:
+      "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150",
+    charge: "GH₵ 150",
+    specialist: "Jayden",
+    services: ["Haircut", "Massage"],
+    date: "13 May 2026",
+    time: "10:00 AM",
+    status: "active",
+  },
+  {
+    id: "2",
+    customer: "Abena Mensah",
+    avatar:
+      "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=150",
+    charge: "GH₵ 80",
+    specialist: "Lily",
+    services: ["Facial", "Spa"],
+    date: "15 May 2026",
+    time: "2:30 PM",
+    status: "upcoming",
+  },
+  {
+    id: "3",
+    customer: "Ama Owusu",
+    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150",
+    charge: "GH₵ 150",
+    specialist: "Alex",
+    services: ["Manicure", "Pedicure"],
+    date: "16 May 2026",
+    time: "11:00 AM",
+    status: "upcoming",
+  },
+  {
+    id: "4",
+    customer: "Kojo Darko",
+    avatar:
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
+    charge: "GH₵ 60",
+    specialist: "Jayden",
+    services: ["Haircut"],
+    date: "17 May 2026",
+    time: "9:00 AM",
+    status: "request",
+  },
+  {
+    id: "5",
+    customer: "Efua Asante",
+    avatar:
+      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150",
+    charge: "GH₵ 90",
+    specialist: "Lily",
+    services: ["Facial"],
+    date: "18 May 2026",
+    time: "3:00 PM",
+    status: "request",
+  },
+];
+
+function ActiveCard({ booking, onPress }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        backgroundColor: "#fff",
+        borderRadius: 20,
+        padding: 18,
+        marginBottom: 14,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 10,
+        elevation: 2,
+      }}
+    >
+      {/* Customer row */}
+      <View
+        style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}
+      >
+        <Image
+          source={{ uri: booking.avatar }}
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: 26,
+            borderWidth: 2,
+            borderColor: "#F0F0F0",
+          }}
+          contentFit="cover"
+        />
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={{ fontSize: 15, fontWeight: "800", color: "#1A1A1A" }}>
+            {booking.customer}
+          </Text>
+          <Text style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
+            {booking.date} · {booking.time}
+          </Text>
+        </View>
+        <ChevronRight size={18} color="#CCC" />
+      </View>
+
+      <View
+        style={{ height: 1, backgroundColor: "#F5F5F5", marginBottom: 14 }}
+      />
+
+      {/* Charges + specialist */}
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          marginBottom: 12,
+        }}
+      >
+        <View>
+          <Text style={{ fontSize: 11, color: "#AAA", marginBottom: 3 }}>
+            Service Charges
+          </Text>
+          <Text style={{ fontSize: 16, fontWeight: "800", color: PRIMARY }}>
+            {booking.charge}
+          </Text>
+        </View>
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={{ fontSize: 11, color: "#AAA", marginBottom: 3 }}>
+            Specialist
+          </Text>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: "#1A1A1A" }}>
+            {booking.specialist}
+          </Text>
+        </View>
+      </View>
+
+      {/* Services */}
+      <View>
+        <Text style={{ fontSize: 11, color: "#AAA", marginBottom: 6 }}>
+          Services
+        </Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {booking.services.map((s) => (
+            <View
+              key={s}
+              style={{
+                backgroundColor: "#E0F5F3",
+                borderRadius: 20,
+                paddingHorizontal: 12,
+                paddingVertical: 5,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: "600", color: PRIMARY }}>
+                {s}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function UpcomingCard({ booking, onPress }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        backgroundColor: "#fff",
+        borderRadius: 20,
+        padding: 18,
+        marginBottom: 14,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 10,
+        elevation: 2,
+      }}
+    >
+      {/* Date banner */}
+      <View
+        style={{
+          backgroundColor: "#F7F7F7",
+          borderRadius: 12,
+          paddingHorizontal: 14,
+          paddingVertical: 10,
+          marginBottom: 14,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
+        <Text style={{ fontSize: 13, fontWeight: "700", color: PRIMARY }}>
+          📅 {booking.date} · {booking.time}
+        </Text>
+      </View>
+
+      {/* Customer row */}
+      <View
+        style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}
+      >
+        <Image
+          source={{ uri: booking.avatar }}
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: 26,
+            borderWidth: 2,
+            borderColor: "#F0F0F0",
+          }}
+          contentFit="cover"
+        />
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={{ fontSize: 15, fontWeight: "800", color: "#1A1A1A" }}>
+            {booking.customer}
+          </Text>
+        </View>
+        <ChevronRight size={18} color="#CCC" />
+      </View>
+
+      <View
+        style={{ height: 1, backgroundColor: "#F5F5F5", marginBottom: 14 }}
+      />
+
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          marginBottom: 12,
+        }}
+      >
+        <View>
+          <Text style={{ fontSize: 11, color: "#AAA", marginBottom: 3 }}>
+            Service Charges
+          </Text>
+          <Text style={{ fontSize: 16, fontWeight: "800", color: PRIMARY }}>
+            {booking.charge}
+          </Text>
+        </View>
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={{ fontSize: 11, color: "#AAA", marginBottom: 3 }}>
+            Specialist
+          </Text>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: "#1A1A1A" }}>
+            {booking.specialist}
+          </Text>
+        </View>
+      </View>
+
+      <View>
+        <Text style={{ fontSize: 11, color: "#AAA", marginBottom: 6 }}>
+          Services
+        </Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {booking.services.map((s) => (
+            <View
+              key={s}
+              style={{
+                backgroundColor: "#E0F5F3",
+                borderRadius: 20,
+                paddingHorizontal: 12,
+                paddingVertical: 5,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: "600", color: PRIMARY }}>
+                {s}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function RequestCard({ booking, onAccept, onPress }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        backgroundColor: "#fff",
+        borderRadius: 20,
+        padding: 18,
+        marginBottom: 14,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 10,
+        elevation: 2,
+      }}
+    >
+      <View
+        style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}
+      >
+        <Image
+          source={{ uri: booking.avatar }}
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: 26,
+            borderWidth: 2,
+            borderColor: "#F0F0F0",
+          }}
+          contentFit="cover"
+        />
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={{ fontSize: 15, fontWeight: "800", color: "#1A1A1A" }}>
+            {booking.customer}
+          </Text>
+          <Text style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
+            {booking.date} · {booking.time}
+          </Text>
+        </View>
+      </View>
+
+      <View
+        style={{ height: 1, backgroundColor: "#F5F5F5", marginBottom: 14 }}
+      />
+
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          marginBottom: 12,
+        }}
+      >
+        <View>
+          <Text style={{ fontSize: 11, color: "#AAA", marginBottom: 3 }}>
+            Service Charges
+          </Text>
+          <Text style={{ fontSize: 16, fontWeight: "800", color: PRIMARY }}>
+            {booking.charge}
+          </Text>
+        </View>
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={{ fontSize: 11, color: "#AAA", marginBottom: 3 }}>
+            Specialist
+          </Text>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: "#1A1A1A" }}>
+            {booking.specialist}
+          </Text>
+        </View>
+      </View>
+
+      <View style={{ marginBottom: 16 }}>
+        <Text style={{ fontSize: 11, color: "#AAA", marginBottom: 6 }}>
+          Services
+        </Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {booking.services.map((s) => (
+            <View
+              key={s}
+              style={{
+                backgroundColor: "#E0F5F3",
+                borderRadius: 20,
+                paddingHorizontal: 12,
+                paddingVertical: 5,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: "600", color: PRIMARY }}>
+                {s}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* Accept + Message buttons */}
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        <TouchableOpacity
+          onPress={onAccept}
+          style={{
+            flex: 1,
+            backgroundColor: PRIMARY,
+            borderRadius: 14,
+            paddingVertical: 13,
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>
+            Accept
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => {}}
+          style={{
+            flex: 1,
+            borderWidth: 1.5,
+            borderColor: PRIMARY,
+            borderRadius: 14,
+            paddingVertical: 13,
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ fontSize: 14, fontWeight: "700", color: PRIMARY }}>
+            Message
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+export default function BusinessDashboardScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const [activeFilter, setActiveFilter] = useState("Active");
+  const [allBookings, setAllBookings] = useState(bookings);
+
+  const filtered = allBookings.filter(
+    (b) => b.status === activeFilter.toLowerCase(),
+  );
+
+  const handleAccept = (id) => {
+    setAllBookings((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, status: "upcoming" } : b)),
+    );
+    setActiveFilter("Upcoming");
+  };
+
+  const BG = activeFilter === "Request" ? "#FFF5F3" : "#F7F7F7";
+
+  return (
+    <View style={{ flex: 1, backgroundColor: BG }}>
+      <StatusBar style="dark" />
+
+      {/* Header */}
+      <View
+        style={{
+          backgroundColor: "#fff",
+          paddingTop: insets.top + 14,
+          paddingHorizontal: 22,
+          paddingBottom: 18,
+          borderBottomWidth: 1,
+          borderBottomColor: "#F5F5F5",
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          {/* Avatar (left) */}
+          <Image
+            source={{
+              uri: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=100",
+            }}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              borderWidth: 2,
+              borderColor: PRIMARY,
+              marginRight: 12,
+            }}
+            contentFit="cover"
+          />
+          {/* Greeting */}
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 17, fontWeight: "800", color: "#1A1A1A" }}>
+              Hi Ellay 👋
+            </Text>
+            <Text style={{ fontSize: 12, color: "#888" }}>
+              ellayawson@gmail.com
+            </Text>
+          </View>
+          {/* Bell */}
+          <TouchableOpacity
+            style={{
+              position: "relative",
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: "#F5F5F5",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Bell size={20} color="#1A1A1A" />
+            <View
+              style={{
+                position: "absolute",
+                top: 6,
+                right: 6,
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: "#FF6B6B",
+                borderWidth: 1.5,
+                borderColor: "#fff",
+              }}
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+      >
+        {/* Your Bookings title */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: 22,
+            paddingTop: 24,
+            paddingBottom: 16,
+          }}
+        >
+          <Text style={{ fontSize: 20, fontWeight: "800", color: "#1A1A1A" }}>
+            Your Bookings
+          </Text>
+          <TouchableOpacity
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: "#E0F5F3",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Edit3 size={16} color={PRIMARY} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Filter tabs */}
+        <View
+          style={{
+            flexDirection: "row",
+            paddingHorizontal: 22,
+            gap: 10,
+            marginBottom: 20,
+          }}
+        >
+          {FILTER_TABS.map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              onPress={() => setActiveFilter(tab)}
+              style={{
+                paddingHorizontal: 20,
+                paddingVertical: 10,
+                borderRadius: 30,
+                backgroundColor: activeFilter === tab ? PRIMARY : "#fff",
+                borderWidth: 1.5,
+                borderColor: activeFilter === tab ? PRIMARY : "#E8E8E8",
+                shadowColor: activeFilter === tab ? PRIMARY : "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: activeFilter === tab ? 0.2 : 0.03,
+                shadowRadius: 6,
+                elevation: activeFilter === tab ? 3 : 1,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: "700",
+                  color: activeFilter === tab ? "#fff" : "#888",
+                }}
+              >
+                {tab}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Cards */}
+        <View style={{ paddingHorizontal: 22 }}>
+          {filtered.length === 0 ? (
+            <View style={{ alignItems: "center", paddingTop: 60 }}>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: "#CCC" }}>
+                No {activeFilter.toLowerCase()} bookings
+              </Text>
+            </View>
+          ) : (
+            filtered.map((b) => {
+              const params = {
+                id: b.id,
+                customer: b.customer,
+                avatar: b.avatar,
+                charge: b.charge,
+                specialist: b.specialist,
+                date: b.date,
+                time: b.time,
+              };
+              if (activeFilter === "Active")
+                return (
+                  <ActiveCard
+                    key={b.id}
+                    booking={b}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/business/booking-detail",
+                        params,
+                      })
+                    }
+                  />
+                );
+              if (activeFilter === "Upcoming")
+                return (
+                  <UpcomingCard
+                    key={b.id}
+                    booking={b}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/business/booking-detail",
+                        params,
+                      })
+                    }
+                  />
+                );
+              return (
+                <RequestCard
+                  key={b.id}
+                  booking={b}
+                  onAccept={() => handleAccept(b.id)}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/business/booking-detail",
+                      params,
+                    })
+                  }
+                />
+              );
+            })
+          )}
+        </View>
+      </ScrollView>
+
+      <BusinessTabBar active="Bookings" />
+    </View>
+  );
+}

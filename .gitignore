@@ -1,0 +1,34 @@
+# Root gitignore
+node_modules/
+.env
+.env*.local
+.DS_Store
+*.pem
+*.tsbuildinfo
+
+# Backend
+backend/data/
+backend/uploads/
+
+# Mobile
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/expo-env.d.ts
+mobile/*.orig.*
+mobile/*.jks
+mobile/*.p8
+mobile/*.p12
+mobile/*.key
+mobile/*.mobileprovision
+mobile/.metro-health-check*
+mobile/.metro-virtual/
+mobile/.expo-router-check/
+mobile/caches/
+mobile/public/canvaskit.wasm
+mobile/.vitest/
+
+# General
+npm-debug.*
+yarn-debug.*
+yarn-error.*
