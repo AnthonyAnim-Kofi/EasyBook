@@ -291,42 +291,44 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           ))}
 
-          {/* Switch to Business */}
-          <TouchableOpacity
-            onPress={() => router.push("/business/dashboard")}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              paddingVertical: 16,
-              borderTopWidth: 1,
-              borderTopColor: "#EFEFEF",
-            }}
-          >
-            <View
+          {/* Switch to Business - Only show if user is a business owner */}
+          {user?.role === 'business_owner' && (
+            <TouchableOpacity
+              onPress={() => router.push("/business/dashboard")}
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: "#E0F5F3",
+                flexDirection: "row",
                 alignItems: "center",
-                justifyContent: "center",
-                marginRight: 16,
+                paddingVertical: 16,
+                borderTopWidth: 1,
+                borderTopColor: "#EFEFEF",
               }}
             >
-              <Briefcase size={18} color={PRIMARY} />
-            </View>
-            <Text
-              style={{
-                flex: 1,
-                fontSize: 15,
-                fontWeight: "600",
-                color: PRIMARY,
-              }}
-            >
-              Switch to Business
-            </Text>
-            <ChevronRight size={18} color="#CCCCCC" />
-          </TouchableOpacity>
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: "#E0F5F3",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 16,
+                }}
+              >
+                <Briefcase size={18} color={PRIMARY} />
+              </View>
+              <Text
+                style={{
+                  flex: 1,
+                  fontSize: 15,
+                  fontWeight: "600",
+                  color: PRIMARY,
+                }}
+              >
+                Switch to Business
+              </Text>
+              <ChevronRight size={18} color="#CCCCCC" />
+            </TouchableOpacity>
+          )}
 
           {/* Log Out */}
           <TouchableOpacity

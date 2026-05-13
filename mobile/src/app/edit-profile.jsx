@@ -72,6 +72,7 @@ export default function EditProfileScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("••••••••");
   const [avatar, setAvatar] = useState(null);
+  const [userRole, setUserRole] = useState(null);
 
   useEffect(() => {
     loadUser();
@@ -84,6 +85,7 @@ export default function EditProfileScreen() {
       setEmail(user.email || "");
       setUsername(user.username || user.email?.split('@')[0] || "");
       setAvatar(user.avatar_url || "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=300");
+      setUserRole(user.role);
     }
   };
 
@@ -280,14 +282,17 @@ export default function EditProfileScreen() {
                 Log out
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => router.push("/business/dashboard")}
-              style={{ marginTop: 16 }}
-            >
-              <Text style={{ fontSize: 14, fontWeight: "700", color: PRIMARY }}>
-                Switch to business
-              </Text>
-            </TouchableOpacity>
+            {/* Only show Switch to business if user has business_owner role */}
+            {userRole === 'business_owner' && (
+              <TouchableOpacity
+                onPress={() => router.push("/business/dashboard")}
+                style={{ marginTop: 16 }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "700", color: PRIMARY }}>
+                  Switch to business
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </Animated.ScrollView>
       </View>
