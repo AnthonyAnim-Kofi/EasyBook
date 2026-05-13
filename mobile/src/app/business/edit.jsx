@@ -101,14 +101,14 @@ export default function EditBusinessScreen() {
     const user = await authService.getStoredUser();
     if (user) {
       setFormData({
-        business_name: user.business_name || "Yanks Spa",
-        business_location: user.business_location || "Kwabenya, Accra",
-        phone: user.phone || "+233 24 412 3456",
-        website: user.website || "www.yanksspa.com",
-        business_category: user.business_category || "Spa & Salon",
-        business_about: user.business_about || "Your business description here...",
+        business_name: user.business_name || "",
+        business_location: user.business_location || "",
+        phone: user.phone || "",
+        website: user.website || "",
+        business_category: user.business_category || "",
+        business_about: user.business_about || "",
         avatar_url: user.avatar_url || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300",
-        opening_hours: user.opening_hours || "Mon - Sat: 9:00 AM - 8:00 PM",
+        opening_hours: user.opening_hours || "",
         gallery: user.gallery || [],
         packages: user.packages || [],
         specialists: user.specialists || [],
@@ -145,10 +145,17 @@ export default function EditBusinessScreen() {
   const handleSave = async () => {
     setLoading(true);
     try {
-      await authService.updateProfile(formData);
-      Alert.alert("Success", "Business details updated!");
-      router.back();
+      const updatedUser = await authService.updateProfile(formData);
+      // Ensure the data is saved before navigating back
+      if (updatedUser) {
+        Alert.alert("Success", "Business details updated!", [
+          { text: "OK", onPress: () => router.back() }
+        ]);
+      } else {
+        router.back();
+      }
     } catch (error) {
+      console.error("Save error:", error);
       Alert.alert("Error", "Could not save changes");
     } finally {
       setLoading(false);
@@ -167,7 +174,7 @@ export default function EditBusinessScreen() {
           <TouchableOpacity onPress={() => router.back()} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#F5F5F5", alignItems: "center", justifyContent: "center" }}>
             <ArrowLeft size={20} color="#1A1A1A" />
           </TouchableOpacity>
-          <Text style={{ fontSize: 17, fontWeight: "700", color: "#1A1A1A" }}>Edit Business</Text>
+          <Text style={{ fontSize: 17, fontWeight: "700", color: "#1A1A1A" }}>Edit Business Profile</Text>
           <TouchableOpacity onPress={handleSave} disabled={loading}>
             {loading ? <ActivityIndicator size="small" color={PRIMARY} /> : <Text style={{ fontSize: 15, fontWeight: "700", color: PRIMARY }}>Save</Text>}
           </TouchableOpacity>

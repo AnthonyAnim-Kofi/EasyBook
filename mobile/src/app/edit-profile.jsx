@@ -103,8 +103,10 @@ export default function EditProfileScreen() {
   const handleSave = async () => {
     try {
       await authService.updateProfile({
-        fullName,
-        avatarUrl: avatar,
+        full_name: fullName,
+        email,
+        username,
+        avatar_url: avatar,
       });
       router.back();
     } catch (error) {

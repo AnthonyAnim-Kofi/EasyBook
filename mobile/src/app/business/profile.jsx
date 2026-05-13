@@ -132,7 +132,7 @@ export default function BusinessProfileScreen() {
           </View>
 
           <Text style={{ fontSize: 22, fontWeight: "800", color: "#1A1A1A", marginBottom: 4 }}>
-            {user?.business_name || user?.full_name || "Your Business"}
+            {user?.business_name || "Your Business"}
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 18 }}>
             <MapPin size={14} color="#888" />
@@ -142,7 +142,7 @@ export default function BusinessProfileScreen() {
           </View>
 
           <TouchableOpacity onPress={() => router.push("/business/edit")} style={{ borderWidth: 2, borderColor: PRIMARY, borderRadius: 30, paddingVertical: 12, paddingHorizontal: 48, alignItems: "center" }}>
-            <Text style={{ fontSize: 15, fontWeight: "700", color: PRIMARY }}>Edit details</Text>
+            <Text style={{ fontSize: 15, fontWeight: "700", color: PRIMARY }}>Edit business profile</Text>
           </TouchableOpacity>
         </View>
 

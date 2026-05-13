@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -12,7 +12,7 @@ import {
   ChevronRight,
   Briefcase,
 } from "lucide-react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { Image } from "expo-image";
 import authService from "@/services/auth";
 import bookingService from "@/services/booking";
@@ -48,6 +48,13 @@ export default function ProfileScreen() {
   useEffect(() => {
     loadProfile();
   }, []);
+
+  // Reload when screen comes into focus (e.g., after editing profile)
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [])
+  );
 
   const loadProfile = async () => {
     try {
