@@ -11,6 +11,7 @@ const BASE_URL = __DEV__
 
 const TOKEN_KEY = 'easybook_auth_token';
 const USER_KEY = 'easybook_user';
+const SAVED_EMAIL_KEY = 'easybook_saved_email';
 
 // ─── Token Management ───────────────────────────────────────────────────────
 
@@ -37,6 +38,18 @@ export async function setStoredUser(user) {
 
 export async function clearAuth() {
   await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+}
+
+export async function getSavedEmail() {
+  return AsyncStorage.getItem(SAVED_EMAIL_KEY);
+}
+
+export async function setSavedEmail(email) {
+  return AsyncStorage.setItem(SAVED_EMAIL_KEY, email);
+}
+
+export async function removeSavedEmail() {
+  return AsyncStorage.removeItem(SAVED_EMAIL_KEY);
 }
 
 // ─── Base Fetch Wrapper ─────────────────────────────────────────────────────

@@ -18,10 +18,12 @@ export const getCurrentLocation = async () => {
 
     if (reverseGeocode.length > 0) {
       const address = reverseGeocode[0];
+      const city = address.city || address.district || address.region || 'Unknown Location';
+      const country = address.country || '';
       return {
-        city: address.city || address.district || address.region || 'Unknown Location',
-        country: address.country,
-        fullAddress: `${address.city}, ${address.country}`,
+        city,
+        country,
+        fullAddress: address.formattedAddress || (country ? `${city}, ${country}` : city),
       };
     }
 

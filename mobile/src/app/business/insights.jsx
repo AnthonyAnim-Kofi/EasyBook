@@ -26,7 +26,7 @@ const MONTHS = [
 ];
 const YEARS = ["2024", "2025", "2026", "2027"];
 
-const stats = [
+const INITIAL_STATS = [
   { label: "Bookings", value: "25", color: "#E0F5F3" },
   { label: "Shares", value: "10", color: "#E8F4FF" },
   { label: "Reviews", value: "20", color: "#FFF0E8" },
@@ -307,12 +307,21 @@ export default function InsightsScreen() {
   const [startYear, setStartYear] = useState("2025");
   const [endMonth, setEndMonth] = useState("May");
   const [endYear, setEndYear] = useState("2026");
+  const [currentStats, setCurrentStats] = useState(INITIAL_STATS);
 
   const handleApply = (sm, sy, em, ey) => {
     setStartMonth(sm);
     setStartYear(sy);
     setEndMonth(em);
     setEndYear(ey);
+    
+    // Simulate data fetching/filtering based on date range
+    // In a real app, this would be an API call
+    setCurrentStats([
+      { label: "Bookings", value: Math.floor(Math.random() * 50 + 10).toString(), color: "#E0F5F3" },
+      { label: "Shares", value: Math.floor(Math.random() * 20 + 5).toString(), color: "#E8F4FF" },
+      { label: "Reviews", value: Math.floor(Math.random() * 30 + 5).toString(), color: "#FFF0E8" },
+    ]);
   };
 
   return (
@@ -377,7 +386,7 @@ export default function InsightsScreen() {
 
         {/* Stat boxes */}
         <View style={{ flexDirection: "row", gap: 12, marginBottom: 28 }}>
-          {stats.map((stat) => (
+          {currentStats.map((stat) => (
             <View
               key={stat.label}
               style={{

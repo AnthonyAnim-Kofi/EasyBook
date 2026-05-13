@@ -38,7 +38,7 @@ const ALL_BOOKINGS = [
   {
     id: "2",
     salon: "Yanks Spa and Salon",
-    location: "Takoradi, Ghana",
+    location: "Kwabenya, Accra",
     time: "2:30 PM",
     date: "Wed, 15 May 2026",
     createdAt: "Created on 12 May 2026, 11:00 AM",
@@ -424,8 +424,16 @@ export default function BookingsScreen() {
               isFirst={index === 0}
               onPress={() =>
                 router.push({
-                  pathname: "/business/detail",
-                  params: { name: item.salon },
+                  pathname: "/booking/summary",
+                  params: { 
+                    id: item.id,
+                    salon: item.salon,
+                    location: item.location,
+                    time: item.time,
+                    date: item.date,
+                    image: item.image,
+                    status: item.status
+                  },
                 })
               }
               onClear={() => handleClear(item.id)}

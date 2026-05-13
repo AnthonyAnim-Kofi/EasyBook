@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   View,
   Text,
@@ -26,7 +27,7 @@ const places = [
   {
     id: "1",
     name: "Yanks Spa and Salon",
-    location: "Takoradi, Ghana",
+    location: "Kwabenya, Accra",
     rating: 4.5,
     reviews: "1k+",
     image: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600",
@@ -60,6 +61,17 @@ const places = [
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState("All");
+
+  const filteredPlaces = activeTab === "All" 
+    ? places 
+    : places.filter(p => {
+        if (activeTab === "Hair") return p.name.toLowerCase().includes("barber") || p.name.toLowerCase().includes("salon");
+        if (activeTab === "Spa") return p.name.toLowerCase().includes("spa");
+        if (activeTab === "Makeup") return p.name.toLowerCase().includes("beauty");
+        if (activeTab === "Nails") return p.name.toLowerCase().includes("beauty") || p.name.toLowerCase().includes("salon");
+        return true;
+      });
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
@@ -132,20 +144,21 @@ export default function ExploreScreen() {
           {categories.map((cat) => (
             <TouchableOpacity
               key={cat.id}
+              onPress={() => setActiveTab(cat.label)}
               style={{
                 paddingHorizontal: 18,
                 paddingVertical: 9,
                 borderRadius: 20,
-                backgroundColor: cat.active ? PRIMARY : "#fff",
+                backgroundColor: activeTab === cat.label ? PRIMARY : "#fff",
                 borderWidth: 1.5,
-                borderColor: cat.active ? PRIMARY : "#E8E8E8",
+                borderColor: activeTab === cat.label ? PRIMARY : "#E8E8E8",
               }}
             >
               <Text
                 style={{
                   fontSize: 13,
                   fontWeight: "600",
-                  color: cat.active ? "#fff" : "#666",
+                  color: activeTab === cat.label ? "#fff" : "#666",
                 }}
               >
                 {cat.label}
@@ -155,80 +168,86 @@ export default function ExploreScreen() {
         </ScrollView>
 
         <View style={{ paddingHorizontal: 22 }}>
-          {places.map((place) => (
-            <TouchableOpacity
-              key={place.id}
-              onPress={() =>
-                router.push({
-                  pathname: "/business/detail",
-                  params: { id: place.id, name: place.name },
-                })
-              }
-              style={{
-                backgroundColor: "#fff",
-                borderRadius: 20,
-                marginBottom: 16,
-                overflow: "hidden",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.06,
-                shadowRadius: 8,
-                elevation: 2,
-              }}
-            >
-              <Image
-                source={{ uri: place.image }}
-                style={{ width: "100%", height: 150 }}
-                contentFit="cover"
-              />
-              <View style={{ padding: 16 }}>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: "700",
-                    color: "#1A1A1A",
-                    marginBottom: 4,
-                  }}
-                >
-                  {place.name}
-                </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <MapPin size={13} color="#999" />
-                    <Text
-                      style={{ fontSize: 12, color: "#888", marginLeft: 4 }}
-                    >
-                      {place.location}
-                    </Text>
-                  </View>
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <Star size={13} color="#FFD93D" fill="#FFD93D" />
-                    <Text
-                      style={{
-                        fontSize: 13,
-                        fontWeight: "700",
-                        color: "#1A1A1A",
-                        marginLeft: 4,
-                      }}
-                    >
-                      {place.rating}
-                    </Text>
-                    <Text
-                      style={{ fontSize: 12, color: "#AAA", marginLeft: 3 }}
-                    >
-                      ({place.reviews})
-                    </Text>
+          {filteredPlaces.length > 0 ? (
+            filteredPlaces.map((place) => (
+              <TouchableOpacity
+                key={place.id}
+                onPress={() =>
+                  router.push({
+                    pathname: "/business/detail",
+                    params: { id: place.id, name: place.name },
+                  })
+                }
+                style={{
+                  backgroundColor: "#fff",
+                  borderRadius: 20,
+                  marginBottom: 16,
+                  overflow: "hidden",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.06,
+                  shadowRadius: 8,
+                  elevation: 2,
+                }}
+              >
+                <Image
+                  source={{ uri: place.image }}
+                  style={{ width: "100%", height: 150 }}
+                  contentFit="cover"
+                />
+                <View style={{ padding: 16 }}>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "700",
+                      color: "#1A1A1A",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {place.name}
+                  </Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                      <MapPin size={13} color="#999" />
+                      <Text
+                        style={{ fontSize: 12, color: "#888", marginLeft: 4 }}
+                      >
+                        {place.location}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                      <Star size={13} color="#FFD93D" fill="#FFD93D" />
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          fontWeight: "700",
+                          color: "#1A1A1A",
+                          marginLeft: 4,
+                        }}
+                      >
+                        {place.rating}
+                      </Text>
+                      <Text
+                        style={{ fontSize: 12, color: "#AAA", marginLeft: 3 }}
+                      >
+                        ({place.reviews})
+                      </Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={{ alignItems: "center", paddingTop: 40 }}>
+              <Text style={{ color: "#AAA", fontSize: 15 }}>No places found in this category</Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,8 +10,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Bell, Edit3, ChevronRight } from "lucide-react-native";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useCallback } from "react";
 import BusinessTabBar from "@/components/BusinessTabBar";
+import authService from "@/services/auth";
+import { Alert } from "react-native";
 
 const PRIMARY = "#00A896";
 const { width } = Dimensions.get("window");
@@ -291,7 +294,7 @@ function UpcomingCard({ booking, onPress }) {
   );
 }
 
-function RequestCard({ booking, onAccept, onPress }) {
+function RequestCard({ booking, onAccept, onMessage, onPress }) {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -400,7 +403,7 @@ function RequestCard({ booking, onAccept, onPress }) {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => {}}
+          onPress={onMessage}
           style={{
             flex: 1,
             borderWidth: 1.5,
@@ -424,6 +427,18 @@ export default function BusinessDashboardScreen() {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState("Active");
   const [allBookings, setAllBookings] = useState(bookings);
+  const [user, setUser] = useState(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadUser();
+    }, [])
+  );
+
+  const loadUser = async () => {
+    const stored = await authService.getStoredUser();
+    setUser(stored);
+  };
 
   const filtered = allBookings.filter(
     (b) => b.status === activeFilter.toLowerCase(),
@@ -457,7 +472,7 @@ export default function BusinessDashboardScreen() {
           {/* Avatar (left) */}
           <Image
             source={{
-              uri: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=100",
+              uri: user?.avatar_url || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=100",
             }}
             style={{
               width: 44,
@@ -472,14 +487,15 @@ export default function BusinessDashboardScreen() {
           {/* Greeting */}
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 17, fontWeight: "800", color: "#1A1A1A" }}>
-              Hi Ellay 👋
+              Hi {user?.full_name?.split(" ")[0] || "Owner"} 👋
             </Text>
             <Text style={{ fontSize: 12, color: "#888" }}>
-              ellayawson@gmail.com
+              {user?.email || "business@easybook.com"}
             </Text>
           </View>
           {/* Bell */}
           <TouchableOpacity
+            onPress={() => Alert.alert("Notifications", "You have no new notifications.")}
             style={{
               position: "relative",
               width: 40,
@@ -527,6 +543,7 @@ export default function BusinessDashboardScreen() {
             Your Bookings
           </Text>
           <TouchableOpacity
+            onPress={() => Alert.alert("Edit", "Profile editing is coming soon.")}
             style={{
               width: 36,
               height: 36,
@@ -630,6 +647,7 @@ export default function BusinessDashboardScreen() {
                   key={b.id}
                   booking={b}
                   onAccept={() => handleAccept(b.id)}
+                  onMessage={() => router.push({ pathname: "/business/message", params: { id: b.id, name: b.customer } })}
                   onPress={() =>
                     router.push({
                       pathname: "/business/booking-detail",

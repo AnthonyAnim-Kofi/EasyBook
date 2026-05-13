@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
+import { useState, useEffect } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -13,6 +14,8 @@ import {
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
+import authService from "@/services/auth";
+import bookingService from "@/services/booking";
 
 const PRIMARY = "#00A896";
 const BG = "#F7F7F7";
@@ -38,6 +41,50 @@ const menuItems = [
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [bookingCount, setBookingCount] = useState(0);
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      const storedUser = await authService.getStoredUser();
+      setUser(storedUser);
+      
+      // Also try to get fresh data and bookings
+      const [freshUser, bookings] = await Promise.allSettled([
+        authService.getMe(),
+        bookingService.list()
+      ]);
+
+      if (freshUser.status === 'fulfilled') {
+        setUser(freshUser.value);
+      }
+      if (bookings.status === 'fulfilled') {
+        setBookingCount(bookings.value.length || 0);
+      }
+    } catch (error) {
+      console.error("Error loading profile:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await authService.signOut();
+    router.replace("/signin");
+  };
+
+  if (loading && !user) {
+    return (
+      <View style={{ flex: 1, backgroundColor: BG, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color={PRIMARY} />
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
@@ -76,7 +123,7 @@ export default function ProfileScreen() {
             >
               <Image
                 source={{
-                  uri: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=300",
+                  uri: user?.avatar_url || "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=300",
                 }}
                 style={{ width: "100%", height: "100%" }}
                 contentFit="cover"
@@ -93,7 +140,7 @@ export default function ProfileScreen() {
             }}
           >
             <Text style={{ fontSize: 20, fontWeight: "800", color: "#1A1A1A" }}>
-              Ella Yawson
+              {user?.full_name || "User"}
             </Text>
             <View
               style={{
@@ -111,7 +158,7 @@ export default function ProfileScreen() {
             </View>
           </View>
           <Text style={{ fontSize: 14, color: "#888", marginTop: 3 }}>
-            @ellay1222
+            @{user?.username || user?.email?.split('@')[0] || "user"}
           </Text>
         </View>
 
@@ -137,7 +184,7 @@ export default function ProfileScreen() {
               <Text
                 style={{ fontSize: 22, fontWeight: "800", color: "#1A1A1A" }}
               >
-                10
+                {bookingCount}
               </Text>
               <Text style={{ fontSize: 12, color: "#888", marginTop: 3 }}>
                 Bookings
@@ -276,7 +323,7 @@ export default function ProfileScreen() {
 
           {/* Log Out */}
           <TouchableOpacity
-            onPress={() => router.replace("/signin")}
+            onPress={handleLogout}
             style={{
               flexDirection: "row",
               alignItems: "center",

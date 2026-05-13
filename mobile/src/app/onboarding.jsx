@@ -49,12 +49,20 @@ export default function OnboardingScreen() {
   const flatListRef = useRef(null);
   const scrollX = useRef(new Animated.Value(0)).current;
 
+  const getItemLayout = (_, index) => ({
+    length: width,
+    offset: width * index,
+    index,
+  });
+
   const handleNext = () => {
-    if (currentIndex < slides.length - 1) {
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < slides.length) {
       flatListRef.current?.scrollToIndex({
-        index: currentIndex + 1,
+        index: nextIndex,
         animated: true,
       });
+      setCurrentIndex(nextIndex); // Optimistically update
     } else {
       router.push("/signin");
     }
@@ -160,6 +168,13 @@ export default function OnboardingScreen() {
           setCurrentIndex(index);
         }}
         scrollEventThrottle={16}
+        getItemLayout={getItemLayout}
+        onScrollToIndexFailed={(info) => {
+          const wait = new Promise(resolve => setTimeout(resolve, 500));
+          wait.then(() => {
+            flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
+          });
+        }}
         style={{ flex: 1 }}
       />
 

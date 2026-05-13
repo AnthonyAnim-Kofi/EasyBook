@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { ArrowLeft } from "lucide-react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import authService from "@/services/auth";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 
 const PRIMARY = "#00A896";
@@ -21,9 +22,21 @@ export default function BookingDetailsScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
 
-  const [name, setName] = useState("Ella Yawson");
-  const [email, setEmail] = useState("ellayawson@gmail.com");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [note, setNote] = useState("");
+
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    const user = await authService.getStoredUser();
+    if (user) {
+      setName(user.full_name || "");
+      setEmail(user.email || "");
+    }
+  };
 
   const paddingAnimation = useRef(
     new Animated.Value(insets.bottom + 20),

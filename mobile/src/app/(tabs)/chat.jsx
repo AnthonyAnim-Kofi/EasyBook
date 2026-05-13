@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Search, MessageCircle } from "lucide-react-native";
 import { Image } from "expo-image";
+import { useRouter } from "expo-router";
 
 const PRIMARY = "#00A896";
 const BG = "#F6F4F3";
@@ -50,6 +51,7 @@ const chats = [
 
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
@@ -120,6 +122,10 @@ export default function ChatScreen() {
           {chats.map((chat, index) => (
             <TouchableOpacity
               key={chat.id}
+              onPress={() => router.push({
+                pathname: "/business/message",
+                params: { id: chat.id, name: chat.name, avatar: chat.image }
+              })}
               style={{
                 flexDirection: "row",
                 alignItems: "center",

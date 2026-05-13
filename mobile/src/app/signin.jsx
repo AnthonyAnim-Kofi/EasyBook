@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import InputField from "@/components/InputField";
 import Button from "@/components/Button";
 import { colors, typography, radius } from "@/theme";
 import authService from "@/services/auth";
+import { getSavedEmail, setSavedEmail, removeSavedEmail } from "@/services/api";
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -27,6 +28,18 @@ export default function SignInScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isBusiness, setIsBusiness] = useState(false);
+
+  useEffect(() => {
+    loadSavedEmail();
+  }, []);
+
+  const loadSavedEmail = async () => {
+    const savedEmail = await getSavedEmail();
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  };
 
   const paddingAnimation = useRef(
     new Animated.Value(insets.bottom + 16),
@@ -66,6 +79,13 @@ export default function SignInScreen() {
 
     try {
       const data = await authService.signIn({ email, password });
+      
+      if (rememberMe) {
+        await setSavedEmail(email);
+      } else {
+        await removeSavedEmail();
+      }
+
       if (isBusiness || data.user.role === 'business_owner') {
         router.replace("/business/dashboard");
       } else {
@@ -212,7 +232,7 @@ export default function SignInScreen() {
                 <Text style={{ fontSize: typography.size.body, color: colors.textSecondary }}>Remember me</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push("/forgot-password")}>
                 <Text style={{ fontSize: typography.size.body, color: colors.primary, fontWeight: typography.weight.semibold }}>
                   Forgot Password?
                 </Text>

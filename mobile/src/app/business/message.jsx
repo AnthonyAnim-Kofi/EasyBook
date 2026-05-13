@@ -8,6 +8,8 @@ import {
   Animated,
   Platform,
   KeyboardAvoidingView,
+  Linking,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -55,7 +57,8 @@ const initialMessages = [
 export default function BusinessMessageScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { name, avatar } = useLocalSearchParams();
+  const params = useLocalSearchParams();
+  const { id, name, avatar } = params;
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
   const scrollRef = useRef(null);
@@ -76,6 +79,48 @@ export default function BusinessMessageScreen() {
     setMessages((prev) => [...prev, newMsg]);
     setInput("");
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+  };
+
+  const handleCall = () => {
+    Linking.openURL('tel:+233200000000');
+  };
+
+  const showMoreOptions = () => {
+    Alert.alert(
+      "Options",
+      "What would you like to do?",
+      [
+        { 
+          text: "View Profile", 
+          onPress: () => {
+            if (params.id) {
+              router.push({ pathname: "/business/detail", params: { id: params.id, name: params.name } });
+            } else {
+              Alert.alert("Info", "Profile details not available for this contact.");
+            }
+          } 
+        },
+        { 
+          text: "Mute Notifications", 
+          onPress: () => Alert.alert("Success", "Notifications muted for this chat.") 
+        },
+        { 
+          text: "Clear Chat", 
+          onPress: () => {
+            Alert.alert(
+              "Clear Chat",
+              "Are you sure you want to delete all messages?",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Clear", onPress: () => setMessages([]), style: "destructive" }
+              ]
+            );
+          }, 
+          style: "destructive" 
+        },
+        { text: "Cancel", style: "cancel" }
+      ]
+    );
   };
 
   return (
@@ -135,6 +180,7 @@ export default function BusinessMessageScreen() {
         </View>
         <View style={{ flexDirection: "row", gap: 10 }}>
           <TouchableOpacity
+            onPress={handleCall}
             style={{
               width: 36,
               height: 36,
@@ -147,6 +193,7 @@ export default function BusinessMessageScreen() {
             <Phone size={16} color="#1A1A1A" />
           </TouchableOpacity>
           <TouchableOpacity
+            onPress={showMoreOptions}
             style={{
               width: 36,
               height: 36,

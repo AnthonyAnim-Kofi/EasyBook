@@ -23,7 +23,7 @@ const initialFavourites = [
   {
     id: "1",
     name: "Yanks Spa and Salon",
-    location: "Takoradi, Ghana",
+    location: "Kwabenya, Accra",
     rating: 3.0,
     reviews: "1k+",
     type: "Spa & Salon",

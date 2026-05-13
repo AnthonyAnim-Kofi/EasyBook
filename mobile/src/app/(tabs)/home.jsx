@@ -52,12 +52,17 @@ export default function HomeScreen() {
 
   // Dynamic data from API
   const [user, setUser] = useState(null);
-  const [location, setLocation] = useState("Takoradi, Ghana");
+  const [location, setLocation] = useState("Locating...");
   const [categories, setCategories] = useState([]);
   const [specialists, setSpecialists] = useState([]);
   const [nearbySalons, setNearbySalons] = useState([]);
   const [suggestedSearches, setSuggestedSearches] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);
+  const [promotions, setPromotions] = useState([
+    { id: "1", bizId: "1", title: "50% off Haircuts", desc: "at Yanks Spa and Salon", image: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800", color: "#00A896" },
+    { id: "2", bizId: "2", title: "Free Facial with Spa", desc: "at Luxury Glow", image: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800", color: "#FF6B6B" },
+    { id: "3", bizId: "3", title: "20% Weekend Special", desc: "at Barber Shop", image: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800", color: "#4D96FF" },
+  ]);
   const [loading, setLoading] = useState(true);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [filters, setFilters] = useState({ city: "", rating: 0 });
@@ -306,28 +311,52 @@ export default function HomeScreen() {
           keyboardShouldPersistTaps="handled"
           style={{ flex: 1, zIndex: 1 }}
         >
-          {/* Promo Banner */}
-          <View style={{ marginHorizontal: 22, marginTop: 20, borderRadius: radius['3xl'], overflow: "hidden", backgroundColor: colors.promoBg }}>
-            <Image
-              source={{ uri: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800" }}
-              style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.25 }}
-              contentFit="cover"
-            />
-            <View style={{ padding: 22 }}>
-              <View style={{ backgroundColor: colors.primary, alignSelf: "flex-start", borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 10 }}>
-                <Text style={{ color: colors.white, fontSize: typography.size.xs, fontWeight: typography.weight.bold }}>LIMITED OFFER</Text>
-              </View>
-              <Text style={{ fontSize: typography.size['3xl'], fontWeight: typography.weight.extrabold, color: colors.white, marginBottom: 4 }}>
-                50% off Today's{"\n"}Special!
-              </Text>
-              <Text style={{ fontSize: typography.size.body, color: colors.whiteAlpha70, marginBottom: 16 }}>
-                Book your appointment now
-              </Text>
-              <TouchableOpacity style={{ backgroundColor: colors.primary, alignSelf: "flex-start", borderRadius: radius.pill, paddingHorizontal: 20, paddingVertical: 10 }}>
-                <Text style={{ color: colors.white, fontWeight: typography.weight.bold, fontSize: typography.size.body }}>Book Now</Text>
+          {/* Promotions Carousel */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            pagingEnabled
+            snapToAlignment="center"
+            decelerationRate="fast"
+            contentContainerStyle={{ paddingHorizontal: 22, paddingTop: 20 }}
+          >
+            {promotions.map((promo) => (
+              <TouchableOpacity
+                key={promo.id}
+                onPress={() => router.push({ pathname: "/business/detail", params: { id: promo.bizId } })}
+                style={{
+                  width: width - 44,
+                  marginRight: 12,
+                  borderRadius: radius['3xl'],
+                  overflow: "hidden",
+                  backgroundColor: promo.color || colors.primary,
+                  height: 180,
+                }}
+              >
+                <Image
+                  source={{ uri: promo.image }}
+                  style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.3 }}
+                  contentFit="cover"
+                />
+                <View style={{ padding: 22, flex: 1, justifyContent: "center" }}>
+                  <View style={{ backgroundColor: "rgba(255,255,255,0.2)", alignSelf: "flex-start", borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 10 }}>
+                    <Text style={{ color: colors.white, fontSize: typography.size.xs, fontWeight: typography.weight.bold }}>FEATURED OFFER</Text>
+                  </View>
+                  <Text style={{ fontSize: typography.size['2xl'], fontWeight: typography.weight.extrabold, color: colors.white, marginBottom: 4 }}>
+                    {promo.title}
+                  </Text>
+                  <Text style={{ fontSize: typography.size.body, color: colors.whiteAlpha70, marginBottom: 12 }}>
+                    {promo.desc}
+                  </Text>
+                  <View
+                    style={{ backgroundColor: colors.white, alignSelf: "flex-start", borderRadius: radius.pill, paddingHorizontal: 16, paddingVertical: 8 }}
+                  >
+                    <Text style={{ color: promo.color || colors.primary, fontWeight: typography.weight.bold, fontSize: typography.size.xs }}>Get Deal</Text>
+                  </View>
+                </View>
               </TouchableOpacity>
-            </View>
-          </View>
+            ))}
+          </ScrollView>
 
           {/* Categories */}
           <SectionHeader title="Category" onAction={() => {}} />

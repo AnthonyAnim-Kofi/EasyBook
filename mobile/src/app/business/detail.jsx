@@ -82,27 +82,27 @@ export default function BusinessDetailScreen() {
   };
 
   const handleAction = (type) => {
-    if (!business) return;
+    if (!biz) return;
     
     switch (type) {
       case "Call":
-        Linking.openURL(`tel:${business.phone || "+233244123456"}`);
+        Linking.openURL(`tel:${biz.phone || "+233244123456"}`);
         break;
       case "Website":
-        Linking.openURL(business.website || "https://easybook.com");
+        Linking.openURL(biz.website || "https://easybook.com");
         break;
       case "Direction":
-        const addr = encodeURIComponent(business.address || "Takoradi, Ghana");
+        const addr = encodeURIComponent(biz.address || "Kwabenya, Accra");
         Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${addr}`);
         break;
       case "Share":
         Share.share({
-          message: `Check out ${business.name} on Easybook!`,
+          message: `Check out ${biz.name} on Easybook!`,
           url: "https://easybook.com",
         });
         break;
       case "Message":
-        router.push({ pathname: "/business/message", params: { id: business.id, name: business.name } });
+        router.push({ pathname: "/business/message", params: { id: biz.id, name: biz.name } });
         break;
     }
   };
@@ -119,6 +119,20 @@ export default function BusinessDetailScreen() {
   const packages = biz.packages || [
     { id: "1", name: "Basic Facial", price: "GH₵ 80", duration: "45 mins", desc: "Deep cleanse, exfoliation & moisturising." },
     { id: "2", name: "Full Hair Package", price: "GH₵ 150", duration: "90 mins", desc: "Wash, cut, blow dry & style." }
+  ];
+
+  const galleryImages = biz.gallery || [
+    "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400",
+    "https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=400",
+    "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=400",
+    "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=400",
+    "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=400",
+    "https://images.unsplash.com/photo-1527799822367-3debd8b8df6a?w=400"
+  ];
+
+  const reviews = biz.reviews || [
+    { id: "1", name: "Alice Mensah", avatar: "https://i.pravatar.cc/150?u=1", date: "2 days ago", rating: 4, comment: "Amazing service! Loved the facial." },
+    { id: "2", name: "John Doe", avatar: "https://i.pravatar.cc/150?u=2", date: "1 week ago", rating: 5, comment: "Best hair cut I've had in ages." }
   ];
 
   const renderTabContent = () => {
@@ -544,7 +558,7 @@ export default function BusinessDetailScreen() {
                     flex: 1,
                   }}
                 >
-                  {biz.address || "Takoradi, Ghana"}
+                  {biz.address || "Kwabenya, Accra"}
                 </Text>
               </View>
             </View>
@@ -725,7 +739,7 @@ export default function BusinessDetailScreen() {
           >
             <MapPin size={14} color={PRIMARY} />
             <Text style={{ fontSize: 13, color: "#555", marginLeft: 6 }}>
-              {biz.address || "Takoradi, Ghana"}
+              {biz.address || "Kwabenya, Accra"}
             </Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center" }}>

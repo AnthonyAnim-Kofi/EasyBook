@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,12 +7,15 @@ import {
   TextInput,
   Animated,
   Platform,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { ArrowLeft, Camera } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
+import authService from "@/services/auth";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 
 const PRIMARY = "#00A896";
@@ -64,10 +67,51 @@ const Field = ({
 export default function EditProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [fullName, setFullName] = useState("Ella Yawson");
-  const [email, setEmail] = useState("ellayawson@gmail.com");
-  const [username, setUsername] = useState("ellay1222");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("••••••••");
+  const [avatar, setAvatar] = useState(null);
+
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    const user = await authService.getStoredUser();
+    if (user) {
+      setFullName(user.full_name || "");
+      setEmail(user.email || "");
+      setUsername(user.username || user.email?.split('@')[0] || "");
+      setAvatar(user.avatar_url || "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=300");
+    }
+  };
+
+  const pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setAvatar(result.assets[0].uri);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      await authService.updateProfile({
+        fullName,
+        avatarUrl: avatar,
+      });
+      router.back();
+    } catch (error) {
+      console.error("Save error:", error);
+      Alert.alert("Error", "Could not save profile");
+    }
+  };
 
   const paddingAnimation = useRef(
     new Animated.Value(insets.bottom + 20),
@@ -122,7 +166,7 @@ export default function EditProfileScreen() {
           <Text style={{ fontSize: 17, fontWeight: "700", color: "#1A1A1A" }}>
             Edit profile
           </Text>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={handleSave}>
             <Text style={{ fontSize: 15, fontWeight: "700", color: PRIMARY }}>
               Save
             </Text>
@@ -154,13 +198,14 @@ export default function EditProfileScreen() {
               >
                 <Image
                   source={{
-                    uri: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=300",
+                    uri: avatar,
                   }}
                   style={{ width: "100%", height: "100%" }}
                   contentFit="cover"
                 />
               </View>
               <TouchableOpacity
+                onPress={pickImage}
                 style={{
                   position: "absolute",
                   bottom: 0,

@@ -52,6 +52,13 @@ router.post('/signup', (req, res) => {
       `INSERT INTO users (id, full_name, email, phone, password, role) VALUES (?, ?, ?, ?, ?, ?)`
     ).run(id, full_name, email.toLowerCase(), phone || null, hashedPassword, userRole);
 
+    if (userRole === 'business_owner') {
+      const bizId = uuid();
+      db.prepare(
+        `INSERT INTO businesses (id, owner_id, name, address, phone) VALUES (?, ?, ?, ?, ?)`
+      ).run(bizId, id, `${full_name}'s Shop`, 'Takoradi, Ghana', phone || null);
+    }
+
     const user = db.prepare('SELECT id, full_name, email, phone, role, avatar_url, location, created_at FROM users WHERE id = ?').get(id);
     const token = generateToken(user);
 
@@ -96,11 +103,27 @@ router.post('/signin', (req, res) => {
 // ─── Get Current User ───────────────────────────────────────────────────────
 
 router.get('/me', authMiddleware, (req, res) => {
-  const user = db.prepare(
+  let user = db.prepare(
     'SELECT id, full_name, email, phone, role, avatar_url, location, created_at, updated_at FROM users WHERE id = ?'
   ).get(req.user.id);
 
   if (!user) return res.status(404).json({ error: 'User not found.' });
+
+  if (user.role === 'business_owner') {
+    const biz = db.prepare('SELECT * FROM businesses WHERE owner_id = ?').get(req.user.id);
+    if (biz) {
+      user = {
+        ...user,
+        business_name: biz.name,
+        business_location: biz.address,
+        business_about: biz.description,
+        business_category: JSON.parse(biz.services_tags || '[]')[0] || '',
+        opening_hours: biz.working_hours,
+        gallery: JSON.parse(biz.gallery || '[]'),
+      };
+    }
+  }
+
   res.json({ user });
 });
 
@@ -108,17 +131,59 @@ router.get('/me', authMiddleware, (req, res) => {
 
 router.put('/me', authMiddleware, (req, res) => {
   try {
-    const { full_name, phone, avatar_url, location } = req.body;
+    const { 
+      full_name, phone, avatar_url, location,
+      business_name, business_location, business_about, 
+      business_category, opening_hours, gallery 
+    } = req.body;
 
+    // Update User
     db.prepare(
       `UPDATE users SET full_name = COALESCE(?, full_name), phone = COALESCE(?, phone), avatar_url = COALESCE(?, avatar_url), location = COALESCE(?, location), updated_at = datetime('now') WHERE id = ?`
     ).run(full_name || null, phone || null, avatar_url || null, location || null, req.user.id);
 
-    const user = db.prepare(
-      'SELECT id, full_name, email, phone, role, avatar_url, location, created_at, updated_at FROM users WHERE id = ?'
-    ).get(req.user.id);
+    // Update Business if owner
+    if (req.user.role === 'business_owner') {
+      db.prepare(
+        `UPDATE businesses SET 
+          name = COALESCE(?, name), 
+          address = COALESCE(?, address), 
+          description = COALESCE(?, description),
+          services_tags = COALESCE(?, services_tags),
+          working_hours = COALESCE(?, working_hours),
+          gallery = COALESCE(?, gallery),
+          updated_at = datetime('now') 
+        WHERE owner_id = ?`
+      ).run(
+        business_name || null, 
+        business_location || null, 
+        business_about || null,
+        business_category ? JSON.stringify([business_category]) : null,
+        opening_hours || null,
+        gallery ? JSON.stringify(gallery) : null,
+        req.user.id
+      );
+    }
 
-    res.json({ user });
+    // Get updated user with business info merged
+    let user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    if (user.role === 'business_owner') {
+      const biz = db.prepare('SELECT * FROM businesses WHERE owner_id = ?').get(req.user.id);
+      if (biz) {
+        user = {
+          ...user,
+          business_name: biz.name,
+          business_location: biz.address,
+          business_about: biz.description,
+          business_category: JSON.parse(biz.services_tags || '[]')[0] || '',
+          opening_hours: biz.working_hours,
+          gallery: JSON.parse(biz.gallery || '[]'),
+        };
+      }
+    }
+
+    const { password, ...safeUser } = user;
+    res.json({ user: safeUser });
   } catch (err) {
     console.error('Update profile error:', err);
     res.status(500).json({ error: 'Failed to update profile.' });

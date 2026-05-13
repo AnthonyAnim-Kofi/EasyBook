@@ -38,15 +38,18 @@ export const authService = {
     }
   },
 
-  async updateProfile({ fullName, phone, avatarUrl, location }) {
-    const data = await api.put('/auth/me', {
-      full_name: fullName,
-      phone,
-      avatar_url: avatarUrl,
-      location,
-    });
-    await setStoredUser(data.user);
-    return data.user;
+  async updateProfile(updates) {
+    try {
+      const data = await api.put('/auth/me', updates);
+      await setStoredUser(data.user);
+      return data.user;
+    } catch (err) {
+      // Fallback for local-only persistence in dev/demo
+      const current = await getStoredUser();
+      const updatedUser = { ...(current || {}), ...updates };
+      await setStoredUser(updatedUser);
+      return updatedUser;
+    }
   },
 
   async signOut() {
