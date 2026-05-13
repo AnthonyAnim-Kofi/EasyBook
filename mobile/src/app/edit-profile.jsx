@@ -108,7 +108,8 @@ export default function EditProfileScreen() {
         username,
         avatar_url: avatar,
       });
-      router.back();
+      // Use replace to force a fresh load of the profile screen
+      router.replace("/(tabs)/profile");
     } catch (error) {
       console.error("Save error:", error);
       Alert.alert("Error", "Could not save profile");

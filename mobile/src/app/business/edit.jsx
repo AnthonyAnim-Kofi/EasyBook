@@ -145,19 +145,12 @@ export default function EditBusinessScreen() {
   const handleSave = async () => {
     setLoading(true);
     try {
-      const updatedUser = await authService.updateProfile(formData);
-      // Ensure the data is saved before navigating back
-      if (updatedUser) {
-        Alert.alert("Success", "Business details updated!", [
-          { text: "OK", onPress: () => router.back() }
-        ]);
-      } else {
-        router.back();
-      }
+      await authService.updateProfile(formData);
+      // Use replace to force a fresh load of the profile screen
+      router.replace("/business/profile");
     } catch (error) {
       console.error("Save error:", error);
       Alert.alert("Error", "Could not save changes");
-    } finally {
       setLoading(false);
     }
   };
