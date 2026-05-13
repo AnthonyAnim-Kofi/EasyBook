@@ -109,6 +109,9 @@ router.get('/me', authMiddleware, (req, res) => {
 
   if (!user) return res.status(404).json({ error: 'User not found.' });
 
+  // Add username derived from email
+  user.username = user.email?.split('@')[0] || '';
+
   if (user.role === 'business_owner') {
     const biz = db.prepare('SELECT * FROM businesses WHERE owner_id = ?').get(req.user.id);
     if (biz) {
@@ -120,6 +123,8 @@ router.get('/me', authMiddleware, (req, res) => {
         business_category: JSON.parse(biz.services_tags || '[]')[0] || '',
         opening_hours: biz.working_hours,
         gallery: JSON.parse(biz.gallery || '[]'),
+        website: biz.website || '',
+        business_phone: biz.phone || '',
       };
     }
   }
@@ -132,15 +137,36 @@ router.get('/me', authMiddleware, (req, res) => {
 router.put('/me', authMiddleware, (req, res) => {
   try {
     const { 
-      full_name, phone, avatar_url, location,
+      full_name, email, username, phone, avatar_url, location,
       business_name, business_location, business_about, 
-      business_category, opening_hours, gallery 
+      business_category, opening_hours, gallery, website
     } = req.body;
 
-    // Update User
+    // Update User (email update requires validation)
+    if (email && email !== req.user.email) {
+      const existing = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email.toLowerCase(), req.user.id);
+      if (existing) {
+        return res.status(409).json({ error: 'Email already in use by another account.' });
+      }
+    }
+
     db.prepare(
-      `UPDATE users SET full_name = COALESCE(?, full_name), phone = COALESCE(?, phone), avatar_url = COALESCE(?, avatar_url), location = COALESCE(?, location), updated_at = datetime('now') WHERE id = ?`
-    ).run(full_name || null, phone || null, avatar_url || null, location || null, req.user.id);
+      `UPDATE users SET 
+        full_name = COALESCE(?, full_name), 
+        email = COALESCE(?, email),
+        phone = COALESCE(?, phone), 
+        avatar_url = COALESCE(?, avatar_url), 
+        location = COALESCE(?, location), 
+        updated_at = datetime('now') 
+      WHERE id = ?`
+    ).run(
+      full_name || null, 
+      email ? email.toLowerCase() : null,
+      phone || null, 
+      avatar_url || null, 
+      location || null, 
+      req.user.id
+    );
 
     // Update Business if owner
     if (req.user.role === 'business_owner') {
@@ -152,6 +178,8 @@ router.put('/me', authMiddleware, (req, res) => {
           services_tags = COALESCE(?, services_tags),
           working_hours = COALESCE(?, working_hours),
           gallery = COALESCE(?, gallery),
+          website = COALESCE(?, website),
+          phone = COALESCE(?, phone),
           updated_at = datetime('now') 
         WHERE owner_id = ?`
       ).run(
@@ -161,6 +189,8 @@ router.put('/me', authMiddleware, (req, res) => {
         business_category ? JSON.stringify([business_category]) : null,
         opening_hours || null,
         gallery ? JSON.stringify(gallery) : null,
+        website || null,
+        phone || null,
         req.user.id
       );
     }
@@ -178,9 +208,13 @@ router.put('/me', authMiddleware, (req, res) => {
           business_category: JSON.parse(biz.services_tags || '[]')[0] || '',
           opening_hours: biz.working_hours,
           gallery: JSON.parse(biz.gallery || '[]'),
+          website: biz.website,
         };
       }
     }
+
+    // Add username (derived from email if not stored separately)
+    user.username = username || user.email?.split('@')[0] || '';
 
     const { password, ...safeUser } = user;
     res.json({ user: safeUser });
