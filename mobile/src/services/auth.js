@@ -16,7 +16,20 @@ export const authService = {
       },
     });
 
-    if (error) throw error;
+    if (error) {
+      // If user already exists, try to sign them in (Smart Link)
+      if (error.message?.includes('already registered')) {
+        try {
+          const signInResult = await this.signIn({ email, password });
+          // If we reached here, the user exists and password is correct.
+          return { ...signInResult, alreadyExists: true };
+        } catch (signInError) {
+          // If sign in fails, it's likely a wrong password for an existing account
+          throw error;
+        }
+      }
+      throw error;
+    }
     
     // If session is null, it means email confirmation is enabled in Supabase
     if (!data.session) {

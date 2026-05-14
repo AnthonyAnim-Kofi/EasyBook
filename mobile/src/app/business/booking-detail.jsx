@@ -19,17 +19,19 @@ export default function BusinessBookingDetailScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
 
-  const customer = params.customer || "Andy Coleman";
-  const avatar =
-    params.avatar ||
-    "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=200";
-  const charge = params.charge || "GH₵ 150";
-  const specialist = params.specialist || "Jayden";
-  const date = params.date || "13 May 2026";
-  const time = params.time || "10:00 AM";
+  const customer = params.customer || "Customer";
+  const avatar = params.avatar;
+  const charge = params.charge || "GH₵ 0";
+  const specialist = params.specialist || "Owner";
+  const date = params.date || "Date N/A";
+  const time = params.time || "Time N/A";
+  const services = params.services ? JSON.parse(params.services) : ["General Service"];
 
-  const SERVICE_PRICE = 150;
-  const TAX = 18;
+  // Parse numeric price from charge string (e.g. "GH₵ 150" -> 150)
+  const totalPrice = parseFloat(charge.replace(/[^\d.]/g, '')) || 0;
+  const TAX_RATE = 0.12;
+  const subtotal = totalPrice / (1 + TAX_RATE);
+  const taxAmount = totalPrice - subtotal;
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F7F7F7" }}>
@@ -156,43 +158,46 @@ export default function BusinessBookingDetailScreen() {
             Service Details
           </Text>
 
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              paddingVertical: 10,
-              borderBottomWidth: 1,
-              borderBottomColor: "#F5F5F5",
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <View
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: "#E0F5F3",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginRight: 12,
-                }}
-              >
-                <Scissors size={16} color={PRIMARY} />
-              </View>
-              <View>
-                <Text
-                  style={{ fontSize: 14, fontWeight: "700", color: "#1A1A1A" }}
+          {services.map((service, index) => (
+            <View
+              key={index}
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                paddingVertical: 10,
+                borderBottomWidth: 1,
+                borderBottomColor: "#F5F5F5",
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: "#E0F5F3",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: 12,
+                  }}
                 >
-                  Classic Haircut
-                </Text>
-                <Text style={{ fontSize: 12, color: "#888" }}>30 mins</Text>
+                  <Scissors size={16} color={PRIMARY} />
+                </View>
+                <View>
+                  <Text
+                    style={{ fontSize: 14, fontWeight: "700", color: "#1A1A1A" }}
+                  >
+                    {service}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: "#888" }}>Professional Service</Text>
+                </View>
               </View>
+              <Text style={{ fontSize: 14, fontWeight: "800", color: PRIMARY }}>
+                GH₵ {(subtotal / services.length).toFixed(2)}
+              </Text>
             </View>
-            <Text style={{ fontSize: 14, fontWeight: "800", color: PRIMARY }}>
-              GH₵ {SERVICE_PRICE}.00
-            </Text>
-          </View>
+          ))}
 
           <View
             style={{
@@ -227,7 +232,7 @@ export default function BusinessBookingDetailScreen() {
               </View>
             </View>
             <Text style={{ fontSize: 14, fontWeight: "700", color: "#555" }}>
-              GH₵ {TAX}.00
+              GH₵ {taxAmount.toFixed(2)}
             </Text>
           </View>
 
@@ -242,7 +247,7 @@ export default function BusinessBookingDetailScreen() {
               Total
             </Text>
             <Text style={{ fontSize: 16, fontWeight: "800", color: PRIMARY }}>
-              GH₵ {SERVICE_PRICE + TAX}.00
+              {charge}
             </Text>
           </View>
         </View>

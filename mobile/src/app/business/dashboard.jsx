@@ -413,7 +413,8 @@ export default function BusinessDashboardScreen() {
           profiles:user_id (
             full_name,
             avatar_url
-          )
+          ),
+          package:packages (name)
         `)
         .eq('business_id', business.id)
         .eq('status', statusFilter)
@@ -427,7 +428,7 @@ export default function BusinessDashboardScreen() {
         avatar: b.profiles?.avatar_url || "https://ui-avatars.com/api/?name=" + (b.profiles?.full_name || "G"),
         charge: `GH₵ ${b.total_price || 0}`,
         specialist: "Owner", // Default for now
-        services: ["Service"], // Could join with booking_items/packages
+        services: b.package?.name ? [b.package.name] : ["General Service"],
         date: format(new Date(b.booking_date), "dd MMM yyyy"),
         time: b.booking_time,
         status: b.status === 'confirmed' ? 'active' : b.status === 'pending' ? 'request' : b.status
@@ -621,6 +622,7 @@ export default function BusinessDashboardScreen() {
                 avatar: b.avatar,
                 charge: b.charge,
                 specialist: b.specialist,
+                services: JSON.stringify(b.services),
                 date: b.date,
                 time: b.time,
               };

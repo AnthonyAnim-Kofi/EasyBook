@@ -15,6 +15,7 @@ import { Image } from "expo-image";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import authService from "@/services/auth";
+import { useAuthStore } from "@/utils/auth/store";
 import BusinessTabBar from "@/components/BusinessTabBar";
 
 const PRIMARY = "#00A896";
@@ -191,7 +192,14 @@ export default function BusinessProfileScreen() {
           <TouchableOpacity onPress={() => authService.signOut().then(() => router.replace("/signin"))} style={{ borderWidth: 1.5, borderColor: "#DDDDDD", borderRadius: 30, paddingHorizontal: 40, paddingVertical: 12, width: "100%", alignItems: "center" }}>
             <Text style={{ fontSize: 14, fontWeight: "600", color: "#888" }}>Log out</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.replace("/(tabs)/home")} style={{ marginTop: 20 }}>
+          <TouchableOpacity 
+            onPress={() => {
+              const { setAppMode } = useAuthStore.getState();
+              setAppMode('customer');
+              router.replace("/(tabs)/home");
+            }} 
+            style={{ marginTop: 20 }}
+          >
             <Text style={{ fontSize: 14, fontWeight: "700", color: PRIMARY }}>Switch to customer profile</Text>
           </TouchableOpacity>
         </View>

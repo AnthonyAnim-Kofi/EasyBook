@@ -13,15 +13,21 @@ import { useAuthModal, useAuthStore, authKey } from './store';
  * directly.
  */
 export const useAuth = () => {
-  const { isReady, auth, setAuth } = useAuthStore();
+  const { isReady, auth, setAuth, appMode, setAppMode } = useAuthStore();
   const { isOpen, close, open } = useAuthModal();
 
   const initiate = useCallback(() => {
-    SecureStore.getItemAsync(authKey).then((auth) => {
-      useAuthStore.setState({
-        auth: auth ? JSON.parse(auth) : null,
-        isReady: true,
-      });
+    SecureStore.getItemAsync(authKey).then((authStr) => {
+      if (authStr) {
+        const parsed = JSON.parse(authStr);
+        useAuthStore.setState({
+          auth: parsed,
+          appMode: parsed.role === 'business_owner' ? 'business' : 'customer',
+          isReady: true,
+        });
+      } else {
+        useAuthStore.setState({ isReady: true });
+      }
     });
   }, []);
 
@@ -48,6 +54,8 @@ export const useAuth = () => {
     auth,
     setAuth,
     initiate,
+    appMode,
+    setAppMode
   };
 };
 

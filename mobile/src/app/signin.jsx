@@ -17,6 +17,7 @@ import InputField from "@/components/InputField";
 import Button from "@/components/Button";
 import { colors, typography, radius } from "@/theme";
 import authService from "@/services/auth";
+import { useAuthStore } from "@/utils/auth/store";
 import { getSavedEmail, setSavedEmail, removeSavedEmail } from "@/services/api";
 
 export default function SignInScreen() {
@@ -99,8 +100,10 @@ export default function SignInScreen() {
           setLoading(false);
           return;
         }
+        useAuthStore.getState().setAppMode('business');
         router.replace("/business/dashboard");
       } else {
+        useAuthStore.getState().setAppMode('customer');
         router.replace("/(tabs)/home");
       }
     } catch (err) {

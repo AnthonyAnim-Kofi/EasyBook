@@ -35,6 +35,8 @@ import InputField from "@/components/InputField";
 import Button from "@/components/Button";
 import { colors, typography, radius, shadows, spacing } from "@/theme";
 import authService from "@/services/auth";
+import { useAuthStore } from "@/utils/auth/store";
+import businessService from "@/services/business";
 import { supabase } from "@/utils/supabase";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -333,11 +335,12 @@ export default function BusinessSignUpScreen() {
         finalCategories.push(otherCategoryText);
       }
 
-      // 1. Update the profile with business-specific info
+      // 1. Update the profile with business-specific info and ensure role is business_owner
       await authService.updateProfile({
         business_name: bizName,
         business_location: location,
         business_category: finalCategories.join(', '),
+        role: "business_owner",
       });
 
       // 2. Create the business record in the 'businesses' table
@@ -361,6 +364,10 @@ export default function BusinessSignUpScreen() {
 
       // Refresh profile to pick up has_business flag
       await authService.getMe();
+      
+      // Set app mode to business
+      const { setAppMode } = useAuthStore.getState();
+      setAppMode('business');
 
       router.replace("/business/dashboard");
     } catch (err) {

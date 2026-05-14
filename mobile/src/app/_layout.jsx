@@ -19,7 +19,7 @@ const queryClient = new QueryClient({
 });
 
 export default function RootLayout() {
-  const { initiate, isReady, auth } = useAuth();
+  const { initiate, isReady, auth, appMode } = useAuth();
   const router = useRouter();
   const segments = useSegments();
 
@@ -31,36 +31,44 @@ export default function RootLayout() {
     if (isReady) {
       SplashScreen.hideAsync();
       
+      const currentPath = segments.join('/');
+      const isPublicGroup = [
+        "signin", "signup", "onboarding", "forgot-password", "reset-password", "business/signup"
+      ].some(path => currentPath === path || segments[0] === path);
+
+      const isPublicOnly = [
+        "signin", "signup", "onboarding"
+      ].some(path => currentPath === path || segments[0] === path);
+
       const inAuthGroup = segments[0] === "(tabs)" || segments[0] === "business";
-      const inPublicGroup = segments[0] === "signin" || segments[0] === "signup" || segments[0] === "onboarding" || segments[0] === "forgot-password" || segments[0] === "reset-password";
 
       if (!auth) {
-        if (!inPublicGroup) {
+        if (!isPublicGroup && currentPath !== "" && currentPath !== "index") {
           router.replace("/onboarding");
         }
       } else {
-        // We have auth. If we are on root or onboarding, go to dashboard
-        if (segments.length === 0 || segments[0] === "onboarding" || segments[0] === "index") {
-          const user = typeof auth === 'string' ? JSON.parse(auth) : auth;
-          const role = user?.role || user?.user_metadata?.role;
-          
-          if (role === 'business_owner') {
-            if (user.has_business) {
-              router.replace("/business/dashboard");
-            } else {
-              // Should not happen if signin check works, but for safety:
-              import('@/services/auth').then(({ authService }) => {
-                authService.signOut();
-                Alert.alert("Access Denied", "You are not a business owner. Please register your business first.");
-              });
-            }
-          } else {
-            router.replace("/(tabs)/home");
-          }
+        const user = typeof auth === 'string' ? JSON.parse(auth) : auth;
+        const role = user?.role || user?.user_metadata?.role;
+        const targetDashboard = appMode === 'business' ? "/business/dashboard" : "/(tabs)/home";
+
+        // 1. If on a "public only" page, redirect to correct dashboard
+        if (isPublicOnly) {
+          router.replace(targetDashboard);
+        }
+        // 2. If at root, redirect
+        else if (segments.length === 0 || segments[0] === "index") {
+          router.replace(targetDashboard);
+        }
+        // 3. Safety check for business owners
+        if (role === 'business_owner' && !user.has_business && inAuthGroup && appMode === 'business' && currentPath !== "business/signup") {
+           import('@/services/auth').then(({ authService }) => {
+              authService.signOut();
+              Alert.alert("Access Denied", "You are not a business owner. Please register your business first.");
+           });
         }
       }
     }
-  }, [isReady, auth, segments]);
+  }, [isReady, auth, segments, appMode]);
 
   if (!isReady) {
     return null;

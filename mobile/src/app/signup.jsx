@@ -17,6 +17,7 @@ import InputField from "@/components/InputField";
 import Button from "@/components/Button";
 import { colors, typography, radius } from "@/theme";
 import authService from "@/services/auth";
+import { useAuthStore } from "@/utils/auth/store";
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -72,7 +73,7 @@ export default function SignUpScreen() {
       const cleanPhone = phone.replace(/[^0-9]/g, '');
       const numericPhone = `${cleanPrefix}${cleanPhone}`;
       
-      const { confirmationRequired } = await authService.signUp({ fullName, email, phone: numericPhone, password });
+      const { confirmationRequired, user } = await authService.signUp({ fullName, email, phone: numericPhone, password, role: "customer" });
       
       if (confirmationRequired) {
         Alert.alert(
@@ -81,6 +82,9 @@ export default function SignUpScreen() {
           [{ text: "OK", onPress: () => router.replace("/signin") }]
         );
       } else {
+        // Ensure appMode is set
+        const { setAppMode } = useAuthStore.getState();
+        setAppMode('customer');
         router.replace("/(tabs)/home");
       }
     } catch (err) {

@@ -9,14 +9,21 @@ export const authKey = `${process.env.EXPO_PUBLIC_PROJECT_GROUP_ID}-jwt`;
 export const useAuthStore = create((set) => ({
   isReady: false,
   auth: null,
+  appMode: 'customer', // 'customer' or 'business'
   setAuth: (auth) => {
     if (auth) {
       SecureStore.setItemAsync(authKey, JSON.stringify(auth));
+      // Default appMode based on role if not set
+      set((state) => ({ 
+        auth, 
+        appMode: state.appMode || (auth.role === 'business_owner' ? 'business' : 'customer')
+      }));
     } else {
       SecureStore.deleteItemAsync(authKey);
+      set({ auth, appMode: 'customer' });
     }
-    set({ auth });
   },
+  setAppMode: (mode) => set({ appMode: mode }),
 }));
 
 /**

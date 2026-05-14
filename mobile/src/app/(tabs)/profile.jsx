@@ -15,6 +15,7 @@ import {
 import { useRouter, useFocusEffect } from "expo-router";
 import { Image } from "expo-image";
 import authService from "@/services/auth";
+import { useAuthStore } from "@/utils/auth/store";
 import bookingService from "@/services/booking";
 
 const PRIMARY = "#00A896";
@@ -291,10 +292,14 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           ))}
 
-          {/* Switch to Business - Only show if user is a business owner */}
-          {user?.role === 'business_owner' && (
+          {/* Switch to Business or Register - Differentiate based on role */}
+          {user?.role === 'business_owner' ? (
             <TouchableOpacity
-              onPress={() => router.push("/business/dashboard")}
+              onPress={() => {
+                const { setAppMode } = useAuthStore.getState();
+                setAppMode('business');
+                router.replace("/business/dashboard");
+              }}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
@@ -325,6 +330,42 @@ export default function ProfileScreen() {
                 }}
               >
                 Switch to Business
+              </Text>
+              <ChevronRight size={18} color="#CCCCCC" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={() => router.push("/business/signup")}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingVertical: 16,
+                borderTopWidth: 1,
+                borderTopColor: "#EFEFEF",
+              }}
+            >
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: "#E0F5F3",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 16,
+                }}
+              >
+                <Briefcase size={20} color={PRIMARY} />
+              </View>
+              <Text
+                style={{
+                  flex: 1,
+                  fontSize: 15,
+                  fontWeight: "600",
+                  color: "#1A1A1A",
+                }}
+              >
+                Register your business
               </Text>
               <ChevronRight size={18} color="#CCCCCC" />
             </TouchableOpacity>
