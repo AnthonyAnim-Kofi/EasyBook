@@ -1,32 +1,35 @@
-import { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
+import { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, ScrollView, Alert } from "react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react-native";
+import { Lock, ArrowLeft, CheckCircle2 } from "lucide-react-native";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import InputField from "@/components/InputField";
 import Button from "@/components/Button";
 import { colors, typography } from "@/theme";
 import { supabase } from "@/utils/supabase";
-import * as Linking from 'expo-linking';
 
-export default function ForgotPasswordScreen() {
+export default function ResetPasswordScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleSubmit = async () => {
-    if (!email) {
-      setError("Please enter your email address.");
+  const handleReset = async () => {
+    if (!password) {
+      setError("Please enter a new password.");
       return;
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError("Please enter a valid email address.");
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
       return;
     }
 
@@ -34,17 +37,20 @@ export default function ForgotPasswordScreen() {
     setLoading(true);
     
     try {
-      const resetLink = Linking.createURL('reset-password');
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: resetLink,
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: password
       });
 
-      if (resetError) throw resetError;
+      if (updateError) throw updateError;
       
       setSubmitted(true);
+      Alert.alert("Success", "Your password has been reset successfully.");
+      setTimeout(() => {
+        router.replace("/signin");
+      }, 2000);
     } catch (err) {
-      console.error('Reset password error:', err);
-      setError(err.message || "Failed to send reset email. Please try again.");
+      console.error('Update password error:', err);
+      setError(err.message || "Failed to reset password. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -57,15 +63,10 @@ export default function ForgotPasswordScreen() {
         <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "#E0F5F3", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
           <CheckCircle2 size={40} color={colors.primary} />
         </View>
-        <Text style={{ fontSize: 24, fontWeight: "800", color: "#1A1A1A", marginBottom: 12, textAlign: "center" }}>Check Your Email</Text>
+        <Text style={{ fontSize: 24, fontWeight: "800", color: "#1A1A1A", marginBottom: 12, textAlign: "center" }}>Password Reset!</Text>
         <Text style={{ fontSize: 16, color: "#666", textAlign: "center", lineHeight: 24, marginBottom: 32 }}>
-          We've sent password reset instructions to {email}
+          Your password has been successfully updated. Redirecting to login...
         </Text>
-        <Button 
-          title="BACK TO LOGIN" 
-          onPress={() => router.replace("/signin")}
-          style={{ width: "100%" }}
-        />
       </View>
     );
   }
@@ -84,9 +85,9 @@ export default function ForgotPasswordScreen() {
         </View>
 
         <ScrollView contentContainerStyle={{ paddingHorizontal: 28, paddingTop: 10 }}>
-          <Text style={{ fontSize: 32, fontWeight: "800", color: "#1A1A1A", marginBottom: 12 }}>Forgot Password?</Text>
+          <Text style={{ fontSize: 32, fontWeight: "800", color: "#1A1A1A", marginBottom: 12 }}>New Password</Text>
           <Text style={{ fontSize: 16, color: "#666", lineHeight: 24, marginBottom: 32 }}>
-            Don't worry! It happens. Please enter the email address associated with your account.
+            Please enter your new password below.
           </Text>
 
           {error && (
@@ -96,17 +97,26 @@ export default function ForgotPasswordScreen() {
           )}
 
           <InputField
-            label="Email Address"
-            icon={Mail}
-            placeholder="Enter your email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
+            label="New Password"
+            icon={Lock}
+            placeholder="Min. 6 characters"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+
+          <InputField
+            label="Confirm Password"
+            icon={Lock}
+            placeholder="Repeat new password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
           />
 
           <Button
-            title={loading ? "Sending..." : "SEND CODE"}
-            onPress={handleSubmit}
+            title={loading ? "Resetting..." : "RESET PASSWORD"}
+            onPress={handleReset}
             loading={loading}
             disabled={loading}
             style={{ marginTop: 20 }}

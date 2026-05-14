@@ -1,81 +1,29 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import {
-  ArrowLeft,
   MapPin,
   Clock,
   ChevronRight,
   Info,
+  Calendar,
 } from "lucide-react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import { supabase } from "@/utils/supabase";
+import { colors, typography, radius, shadows } from "@/theme";
+import { format } from "date-fns";
 
-const PRIMARY = "#00A896";
-const BG = "#FFF5F3";
 const { width } = Dimensions.get("window");
-
 const TABS = ["Upcoming", "Completed", "Cancelled"];
-
-const ALL_BOOKINGS = [
-  {
-    id: "1",
-    salon: "Kofi's Spa",
-    location: "Kwabenya, Accra",
-    time: "10:00 AM",
-    date: "Mon, 13 May 2026",
-    createdAt: "Created on 10 May 2026, 09:00 AM",
-    status: "upcoming",
-    image: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=200",
-  },
-  {
-    id: "2",
-    salon: "Yanks Spa and Salon",
-    location: "Kwabenya, Accra",
-    time: "2:30 PM",
-    date: "Wed, 15 May 2026",
-    createdAt: "Created on 12 May 2026, 11:00 AM",
-    status: "upcoming",
-    image: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=200",
-  },
-  {
-    id: "3",
-    salon: "Magnus Spa",
-    location: "East Legon, Accra",
-    time: "11:00 AM",
-    date: "Fri, 2 May 2026",
-    createdAt: "Completed on 2 May 2026, 12:30 PM",
-    status: "completed",
-    image: "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=200",
-  },
-  {
-    id: "4",
-    salon: "Sister Yaa's Spa",
-    location: "Kasoa, Accra",
-    time: "9:00 AM",
-    date: "Tue, 28 Apr 2026",
-    createdAt: "Completed on 28 Apr 2026, 10:15 AM",
-    status: "completed",
-    image: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=200",
-  },
-  {
-    id: "5",
-    salon: "Elite Cuts Barber",
-    location: "Kumasi, Ghana",
-    time: "3:00 PM",
-    date: "Sat, 25 Apr 2026",
-    createdAt: "Cancelled on 24 Apr 2026, 08:00 AM",
-    status: "cancelled",
-    image: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=200",
-  },
-];
 
 function EmptyState({ tab }) {
   const messages = {
@@ -99,22 +47,22 @@ function EmptyState({ tab }) {
     >
       <View
         style={{
-          width: 64,
-          height: 64,
-          borderRadius: 32,
-          backgroundColor: "#E0F5F3",
+          width: 80,
+          height: 80,
+          borderRadius: 40,
+          backgroundColor: colors.primarySurface,
           alignItems: "center",
           justifyContent: "center",
           marginBottom: 16,
         }}
       >
-        <Info size={30} color={PRIMARY} />
+        <Calendar size={40} color={colors.primary} />
       </View>
       <Text
         style={{
-          fontSize: 17,
-          fontWeight: "700",
-          color: "#1A1A1A",
+          fontSize: typography.size.xl,
+          fontWeight: typography.weight.bold,
+          color: colors.text,
           marginBottom: 8,
           textAlign: "center",
         }}
@@ -123,14 +71,28 @@ function EmptyState({ tab }) {
       </Text>
       <Text
         style={{
-          fontSize: 14,
-          color: "#AAA",
+          fontSize: typography.size.md,
+          color: colors.textTertiary,
           textAlign: "center",
           lineHeight: 21,
         }}
       >
         {msg.sub}
       </Text>
+      <TouchableOpacity 
+        onPress={() => router.push('/(tabs)/explore')}
+        style={{
+          marginTop: 24,
+          backgroundColor: colors.primary,
+          paddingHorizontal: 24,
+          paddingVertical: 12,
+          borderRadius: radius.pill,
+        }}
+      >
+        <Text style={{ color: colors.white, fontWeight: typography.weight.bold }}>
+          Book a Service
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -142,28 +104,23 @@ function BookingCard({ item, isFirst, onPress, onClear, onRestore, tab }) {
     <TouchableOpacity
       onPress={onPress}
       style={{
-        backgroundColor: isTeal ? PRIMARY : "#fff",
-        borderRadius: 20,
+        backgroundColor: isTeal ? colors.primary : colors.card,
+        borderRadius: radius.lg,
         marginBottom: 14,
         padding: 16,
         flexDirection: "row",
         alignItems: "center",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: isTeal ? 0.12 : 0.06,
-        shadowRadius: 10,
-        elevation: isTeal ? 4 : 2,
+        ...shadows.sm,
       }}
     >
-      {/* Circular image */}
       <Image
         source={{ uri: item.image }}
         style={{
-          width: 62,
-          height: 62,
-          borderRadius: 31,
-          borderWidth: 2.5,
-          borderColor: isTeal ? "rgba(255,255,255,0.5)" : "#F0F0F0",
+          width: 70,
+          height: 70,
+          borderRadius: radius.md,
+          borderWidth: 2,
+          borderColor: isTeal ? "rgba(255,255,255,0.4)" : colors.borderLight,
         }}
         contentFit="cover"
       />
@@ -171,34 +128,34 @@ function BookingCard({ item, isFirst, onPress, onClear, onRestore, tab }) {
       <View style={{ flex: 1, marginLeft: 14 }}>
         <Text
           style={{
-            fontSize: 15,
-            fontWeight: "800",
-            color: isTeal ? "#fff" : "#1A1A1A",
-            marginBottom: 8,
+            fontSize: typography.size.md,
+            fontWeight: typography.weight.extrabold,
+            color: isTeal ? colors.white : colors.text,
+            marginBottom: 6,
           }}
+          numberOfLines={1}
         >
           {item.salon}
         </Text>
 
-        {/* Pills row */}
-        <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
+        <View style={{ flexDirection: "row", flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              backgroundColor: isTeal ? "rgba(255,255,255,0.2)" : "#F5F5F5",
-              borderRadius: 20,
+              backgroundColor: isTeal ? "rgba(255,255,255,0.2)" : colors.inputBg,
+              borderRadius: radius.pill,
               paddingHorizontal: 10,
-              paddingVertical: 5,
+              paddingVertical: 4,
             }}
           >
-            <MapPin size={11} color={isTeal ? "#fff" : "#888"} />
+            <MapPin size={10} color={isTeal ? colors.white : colors.textTertiary} />
             <Text
               style={{
-                fontSize: 11,
-                color: isTeal ? "#fff" : "#666",
+                fontSize: 10,
+                color: isTeal ? colors.white : colors.textSecondary,
                 marginLeft: 4,
-                fontWeight: "500",
+                fontWeight: typography.weight.medium,
               }}
               numberOfLines={1}
             >
@@ -209,19 +166,19 @@ function BookingCard({ item, isFirst, onPress, onClear, onRestore, tab }) {
             style={{
               flexDirection: "row",
               alignItems: "center",
-              backgroundColor: isTeal ? "rgba(255,255,255,0.2)" : "#F5F5F5",
-              borderRadius: 20,
+              backgroundColor: isTeal ? "rgba(255,255,255,0.2)" : colors.inputBg,
+              borderRadius: radius.pill,
               paddingHorizontal: 10,
-              paddingVertical: 5,
+              paddingVertical: 4,
             }}
           >
-            <Clock size={11} color={isTeal ? "#fff" : "#888"} />
+            <Clock size={10} color={isTeal ? colors.white : colors.textTertiary} />
             <Text
               style={{
-                fontSize: 11,
-                color: isTeal ? "#fff" : "#666",
+                fontSize: 10,
+                color: isTeal ? colors.white : colors.textSecondary,
                 marginLeft: 4,
-                fontWeight: "500",
+                fontWeight: typography.weight.medium,
               }}
             >
               {item.time}
@@ -229,73 +186,20 @@ function BookingCard({ item, isFirst, onPress, onClear, onRestore, tab }) {
           </View>
         </View>
 
-        {/* Created/status date */}
         <Text
           style={{
             fontSize: 11,
-            color: isTeal ? "rgba(255,255,255,0.75)" : PRIMARY,
-            fontWeight: "500",
+            color: isTeal ? "rgba(255,255,255,0.8)" : colors.primary,
+            fontWeight: typography.weight.semibold,
           }}
         >
-          {item.createdAt}
+          {item.date}
         </Text>
-
-        {/* Action buttons for completed/cancelled */}
-        {tab === "Completed" && (
-          <TouchableOpacity
-            onPress={onClear}
-            style={{
-              marginTop: 10,
-              alignSelf: "flex-start",
-              borderWidth: 1.5,
-              borderColor: "#DDD",
-              borderRadius: 20,
-              paddingHorizontal: 16,
-              paddingVertical: 6,
-            }}
-          >
-            <Text style={{ fontSize: 12, fontWeight: "600", color: "#888" }}>
-              Clear
-            </Text>
-          </TouchableOpacity>
-        )}
-        {tab === "Cancelled" && (
-          <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
-            <TouchableOpacity
-              onPress={onRestore}
-              style={{
-                borderWidth: 1.5,
-                borderColor: PRIMARY,
-                borderRadius: 20,
-                paddingHorizontal: 14,
-                paddingVertical: 6,
-              }}
-            >
-              <Text style={{ fontSize: 12, fontWeight: "600", color: PRIMARY }}>
-                Restore
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={onClear}
-              style={{
-                borderWidth: 1.5,
-                borderColor: "#DDD",
-                borderRadius: 20,
-                paddingHorizontal: 14,
-                paddingVertical: 6,
-              }}
-            >
-              <Text style={{ fontSize: 12, fontWeight: "600", color: "#888" }}>
-                Clear
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
       </View>
 
       <ChevronRight
         size={18}
-        color={isTeal ? "rgba(255,255,255,0.7)" : "#CCC"}
+        color={isTeal ? "rgba(255,255,255,0.7)" : colors.textMuted}
       />
     </TouchableOpacity>
   );
@@ -305,62 +209,80 @@ export default function BookingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("Upcoming");
-  const [bookings, setBookings] = useState(ALL_BOOKINGS);
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = bookings.filter((b) => b.status === activeTab.toLowerCase());
+  useEffect(() => {
+    fetchBookings();
+  }, []);
 
-  const handleClear = (id) =>
-    setBookings((prev) => prev.filter((b) => b.id !== id));
-  const handleRestore = (id) =>
-    setBookings((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, status: "upcoming" } : b)),
-    );
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          business:businesses (name, city, address, image_url),
+          package:packages (name)
+        `)
+        .eq('user_id', user.id)
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+
+      const formatted = data.map(b => ({
+        id: b.id,
+        salon: b.business.name,
+        location: `${b.business.city}, ${b.business.address}`,
+        time: b.time.substring(0, 5),
+        date: format(new Date(b.date), 'EEE, d MMM yyyy'),
+        status: b.status,
+        image: b.business.image_url || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=200",
+        packageName: b.package?.name || 'Service'
+      }));
+
+      setBookings(formatted);
+    } catch (err) {
+      console.error('Error fetching bookings:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filtered = bookings.filter((b) => {
+    if (activeTab === "Upcoming") return b.status === "pending" || b.status === "confirmed" || b.status === "in_progress";
+    if (activeTab === "Completed") return b.status === "completed";
+    if (activeTab === "Cancelled") return b.status === "cancelled";
+    return false;
+  });
 
   return (
-    <View style={{ flex: 1, backgroundColor: BG }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style="dark" />
 
       {/* Header */}
       <View
         style={{
-          backgroundColor: BG,
+          backgroundColor: colors.card,
           paddingTop: insets.top + 16,
           paddingHorizontal: 22,
-          paddingBottom: 8,
+          paddingBottom: 16,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.borderLight,
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            position: "relative",
-          }}
-        >
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{
-              position: "absolute",
-              left: 0,
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: "#fff",
-              alignItems: "center",
-              justifyContent: "center",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.06,
-              shadowRadius: 4,
-              elevation: 1,
-            }}
-          >
-            <ArrowLeft size={20} color="#1A1A1A" />
-          </TouchableOpacity>
-          <Text style={{ fontSize: 18, fontWeight: "800", color: "#1A1A1A" }}>
-            Bookings
-          </Text>
-        </View>
+        <Text style={{ fontSize: typography.size.xl, fontWeight: typography.weight.extrabold, color: colors.text }}>
+          My Bookings
+        </Text>
       </View>
 
       {/* Tab Pills */}
@@ -379,24 +301,20 @@ export default function BookingsScreen() {
             onPress={() => setActiveTab(tab)}
             style={{
               flex: 1,
-              paddingVertical: 10,
-              borderRadius: 30,
+              paddingVertical: 12,
+              borderRadius: radius.pill,
               alignItems: "center",
-              backgroundColor: activeTab === tab ? PRIMARY : "#fff",
+              backgroundColor: activeTab === tab ? colors.primary : colors.card,
               borderWidth: 1.5,
-              borderColor: activeTab === tab ? PRIMARY : "#E8E8E8",
-              shadowColor: activeTab === tab ? PRIMARY : "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: activeTab === tab ? 0.2 : 0.03,
-              shadowRadius: 6,
-              elevation: activeTab === tab ? 3 : 1,
+              borderColor: activeTab === tab ? colors.primary : colors.border,
+              ...shadows.sm,
             }}
           >
             <Text
               style={{
                 fontSize: 13,
-                fontWeight: "700",
-                color: activeTab === tab ? "#fff" : "#888",
+                fontWeight: typography.weight.bold,
+                color: activeTab === tab ? colors.white : colors.textSecondary,
               }}
             >
               {tab}
@@ -411,9 +329,14 @@ export default function BookingsScreen() {
         contentContainerStyle={{
           paddingHorizontal: 22,
           paddingBottom: insets.bottom + 100,
+          flexGrow: 1,
         }}
       >
-        {filtered.length === 0 ? (
+        {loading ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : filtered.length === 0 ? (
           <EmptyState tab={activeTab} />
         ) : (
           filtered.map((item, index) => (
@@ -425,19 +348,9 @@ export default function BookingsScreen() {
               onPress={() =>
                 router.push({
                   pathname: "/booking/summary",
-                  params: { 
-                    id: item.id,
-                    salon: item.salon,
-                    location: item.location,
-                    time: item.time,
-                    date: item.date,
-                    image: item.image,
-                    status: item.status
-                  },
+                  params: { id: item.id },
                 })
               }
-              onClear={() => handleClear(item.id)}
-              onRestore={() => handleRestore(item.id)}
             />
           ))
         )}

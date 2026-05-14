@@ -7,6 +7,7 @@ import {
   Platform,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -307,13 +308,22 @@ export default function BusinessSignUpScreen() {
       const cleanPhone = phone.replace(/[^0-9]/g, '');
       const numericPhone = `${cleanPrefix}${cleanPhone}`;
 
-      const { user } = await authService.signUp({
+      const { user, confirmationRequired } = await authService.signUp({
         fullName,
         email,
         phone: numericPhone,
         password,
         role: "business_owner",
       });
+
+      if (confirmationRequired) {
+        Alert.alert(
+          "Verify your email",
+          "Your business account has been created! Please check your email to verify your account before logging in.",
+          [{ text: "OK", onPress: () => router.replace("/signin") }]
+        );
+        return;
+      }
 
       // Prepare category list
       let finalCategories = selectedCategories
@@ -348,6 +358,9 @@ export default function BusinessSignUpScreen() {
       if (bizError) {
         console.error('Error creating business record:', bizError);
       }
+
+      // Refresh profile to pick up has_business flag
+      await authService.getMe();
 
       router.replace("/business/dashboard");
     } catch (err) {

@@ -1,87 +1,29 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Bell, Edit3, ChevronRight } from "lucide-react-native";
 import { Image } from "expo-image";
 import { useRouter, useFocusEffect } from "expo-router";
-import { useCallback } from "react";
 import BusinessTabBar from "@/components/BusinessTabBar";
 import authService from "@/services/auth";
-import { Alert } from "react-native";
+import { supabase } from "@/utils/supabase";
+import { format } from "date-fns";
 
 const PRIMARY = "#00A896";
 const { width } = Dimensions.get("window");
 
 const FILTER_TABS = ["Active", "Upcoming", "Request"];
 
-const bookings = [
-  {
-    id: "1",
-    customer: "Andy Coleman",
-    avatar:
-      "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150",
-    charge: "GH₵ 150",
-    specialist: "Jayden",
-    services: ["Haircut", "Massage"],
-    date: "13 May 2026",
-    time: "10:00 AM",
-    status: "active",
-  },
-  {
-    id: "2",
-    customer: "Abena Mensah",
-    avatar:
-      "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=150",
-    charge: "GH₵ 80",
-    specialist: "Lily",
-    services: ["Facial", "Spa"],
-    date: "15 May 2026",
-    time: "2:30 PM",
-    status: "upcoming",
-  },
-  {
-    id: "3",
-    customer: "Ama Owusu",
-    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150",
-    charge: "GH₵ 150",
-    specialist: "Alex",
-    services: ["Manicure", "Pedicure"],
-    date: "16 May 2026",
-    time: "11:00 AM",
-    status: "upcoming",
-  },
-  {
-    id: "4",
-    customer: "Kojo Darko",
-    avatar:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
-    charge: "GH₵ 60",
-    specialist: "Jayden",
-    services: ["Haircut"],
-    date: "17 May 2026",
-    time: "9:00 AM",
-    status: "request",
-  },
-  {
-    id: "5",
-    customer: "Efua Asante",
-    avatar:
-      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150",
-    charge: "GH₵ 90",
-    specialist: "Lily",
-    services: ["Facial"],
-    date: "18 May 2026",
-    time: "3:00 PM",
-    status: "request",
-  },
-];
+// Removed hardcoded bookings
 
 function ActiveCard({ booking, onPress }) {
   return (
@@ -426,30 +368,94 @@ export default function BusinessDashboardScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState("Active");
-  const [allBookings, setAllBookings] = useState(bookings);
+  const [allBookings, setAllBookings] = useState([]);
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
-      loadUser();
-    }, [])
+      loadData();
+    }, [activeFilter])
   );
 
-  const loadUser = async () => {
-    const stored = await authService.getStoredUser();
-    setUser(stored);
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const stored = await authService.getStoredUser();
+      setUser(stored);
+
+      if (!stored) return;
+
+      // 1. Fetch the business owned by this user
+      const { data: business, error: bizError } = await supabase
+        .from('businesses')
+        .select('id')
+        .eq('owner_id', stored.id)
+        .single();
+
+      if (bizError) {
+        console.warn('Business not found:', bizError);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Map filters to database statuses
+      // DB statuses: pending, confirmed, completed, cancelled
+      let statusFilter = 'confirmed';
+      if (activeFilter === 'Active') statusFilter = 'confirmed';
+      if (activeFilter === 'Upcoming') statusFilter = 'confirmed'; // Could be future confirmed
+      if (activeFilter === 'Request') statusFilter = 'pending';
+
+      const { data: bookingsData, error: bError } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          profiles:user_id (
+            full_name,
+            avatar_url
+          )
+        `)
+        .eq('business_id', business.id)
+        .eq('status', statusFilter)
+        .order('booking_date', { ascending: true });
+
+      if (bError) throw bError;
+
+      const formatted = (bookingsData || []).map(b => ({
+        id: b.id,
+        customer: b.profiles?.full_name || "Guest",
+        avatar: b.profiles?.avatar_url || "https://ui-avatars.com/api/?name=" + (b.profiles?.full_name || "G"),
+        charge: `GH₵ ${b.total_price || 0}`,
+        specialist: "Owner", // Default for now
+        services: ["Service"], // Could join with booking_items/packages
+        date: format(new Date(b.booking_date), "dd MMM yyyy"),
+        time: b.booking_time,
+        status: b.status === 'confirmed' ? 'active' : b.status === 'pending' ? 'request' : b.status
+      }));
+
+      setAllBookings(formatted);
+    } catch (err) {
+      console.error('Error loading dashboard data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const filtered = allBookings.filter(
-    (b) => b.status === activeFilter.toLowerCase(),
-  );
+  const handleAccept = async (id) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'confirmed' })
+        .eq('id', id);
 
-  const handleAccept = (id) => {
-    setAllBookings((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, status: "upcoming" } : b)),
-    );
-    setActiveFilter("Upcoming");
+      if (error) throw error;
+      loadData();
+    } catch (err) {
+      Alert.alert("Error", "Could not accept booking");
+    }
   };
+
+  const filtered = allBookings; // Filtering is now done at the query level
 
   const BG = activeFilter === "Request" ? "#FFF5F3" : "#F7F7F7";
 
@@ -599,7 +605,9 @@ export default function BusinessDashboardScreen() {
 
         {/* Cards */}
         <View style={{ paddingHorizontal: 22 }}>
-          {filtered.length === 0 ? (
+          {loading ? (
+            <ActivityIndicator size="large" color={PRIMARY} style={{ marginTop: 40 }} />
+          ) : filtered.length === 0 ? (
             <View style={{ alignItems: "center", paddingTop: 60 }}>
               <Text style={{ fontSize: 16, fontWeight: "700", color: "#CCC" }}>
                 No {activeFilter.toLowerCase()} bookings

@@ -1,46 +1,91 @@
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { useEffect, useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { Bell, ChevronLeft, Calendar, Info, CheckCircle } from "lucide-react-native";
-import { colors, typography } from "@/theme";
+import { Bell, ChevronLeft, Calendar, Info, CheckCircle, Gift } from "lucide-react-native";
+import { colors, typography, radius, shadows } from "@/theme";
+import { supabase } from "@/utils/supabase";
+import { format } from "date-fns";
 
-const notifications = [
-  {
-    id: "1",
-    title: "Appointment Confirmed",
-    message: "Your appointment with Kofi's Spa has been confirmed for tomorrow at 10:00 AM.",
-    time: "2h ago",
-    type: "confirmation",
-    icon: CheckCircle,
-    color: colors.primary,
-  },
-  {
-    id: "2",
-    title: "Special Offer!",
-    message: "Get 20% off your next haircut at any participating salon in Kumasi.",
-    time: "5h ago",
-    type: "promo",
-    icon: Info,
-    color: "#F59E0B",
-  },
-  {
-    id: "3",
-    title: "Reminder",
-    message: "Don't forget your appointment today at 3:00 PM with Grace.",
-    time: "1d ago",
-    type: "reminder",
-    icon: Calendar,
-    color: "#3B82F6",
-  },
-];
+const NotificationIcon = ({ type }) => {
+  switch (type) {
+    case "confirmation":
+      return (
+        <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
+          <CheckCircle size={22} color={colors.primary} />
+        </View>
+      );
+    case "promo":
+      return (
+        <View style={[styles.iconContainer, { backgroundColor: "#FFF4E5" }]}>
+          <Gift size={22} color="#FF9F43" />
+        </View>
+      );
+    case "reminder":
+      return (
+        <View style={[styles.iconContainer, { backgroundColor: "#E8F0FE" }]}>
+          <Calendar size={22} color="#3B82F6" />
+        </View>
+      );
+    default:
+      return (
+        <View style={[styles.iconContainer, { backgroundColor: colors.inputBg }]}>
+          <Info size={22} color={colors.textTertiary} />
+        </View>
+      );
+  }
+};
 
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setNotifications(data);
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const markAsRead = async (id) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', id);
+      if (error) throw error;
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+    } catch (err) {
+      console.error('Error marking as read:', err);
+    }
+  };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.backgroundAlt }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style="dark" />
       
       {/* Header */}
@@ -48,25 +93,32 @@ export default function NotificationsScreen() {
         paddingTop: insets.top + 16, 
         paddingHorizontal: 20, 
         paddingBottom: 16, 
-        backgroundColor: colors.white,
+        backgroundColor: colors.card,
         flexDirection: "row",
         alignItems: "center",
         borderBottomWidth: 1,
-        borderBottomColor: colors.divider,
+        borderBottomColor: colors.borderLight,
       }}>
         <TouchableOpacity 
           onPress={() => router.back()}
-          style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.backgroundAlt, alignItems: "center", justifyContent: "center", marginRight: 12 }}
+          style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.inputBg, alignItems: "center", justifyContent: "center", marginRight: 12 }}
         >
           <ChevronLeft size={22} color={colors.text} />
         </TouchableOpacity>
-        <Text style={{ fontSize: typography.size.xl, fontWeight: typography.weight.bold, color: colors.text }}>
+        <Text style={{ fontSize: typography.size.xl, fontWeight: typography.weight.extrabold, color: colors.text }}>
           Notifications
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 20 }}>
-        {notifications.length === 0 ? (
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ padding: 20, flexGrow: 1 }}
+      >
+        {loading ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : notifications.length === 0 ? (
           <View style={{ alignItems: "center", justifyContent: "center", marginTop: 100 }}>
             <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: colors.primarySurface, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
               <Bell size={40} color={colors.primary} />
@@ -80,37 +132,34 @@ export default function NotificationsScreen() {
           notifications.map((item) => (
             <TouchableOpacity 
               key={item.id}
+              onPress={() => markAsRead(item.id)}
               style={{ 
-                backgroundColor: colors.white, 
-                borderRadius: 16, 
+                backgroundColor: item.is_read ? colors.card : colors.white, 
+                borderRadius: radius.lg, 
                 padding: 16, 
                 marginBottom: 16,
                 flexDirection: "row",
                 alignItems: "flex-start",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.05,
-                shadowRadius: 8,
-                elevation: 2,
+                borderWidth: item.is_read ? 0 : 1,
+                borderColor: colors.primarySurface,
+                ...shadows.sm,
               }}
             >
-              <View style={{ 
-                width: 44, 
-                height: 44, 
-                borderRadius: 22, 
-                backgroundColor: `${item.color}15`, 
-                alignItems: "center", 
-                justifyContent: "center",
-                marginRight: 14 
-              }}>
-                <item.icon size={22} color={item.color} />
-              </View>
-              <View style={{ flex: 1 }}>
+              <NotificationIcon type={item.type} />
+              <View style={{ flex: 1, marginLeft: 14 }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <Text style={{ fontSize: typography.size.md, fontWeight: typography.weight.bold, color: colors.text }}>{item.title}</Text>
-                  <Text style={{ fontSize: typography.size.xs, color: colors.textTertiary }}>{item.time}</Text>
+                  <Text style={{ 
+                    fontSize: typography.size.md, 
+                    fontWeight: item.is_read ? typography.weight.bold : typography.weight.extrabold, 
+                    color: colors.text 
+                  }}>
+                    {item.title}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: colors.textMuted }}>
+                    {format(new Date(item.created_at), 'MMM d')}
+                  </Text>
                 </View>
-                <Text style={{ fontSize: typography.size.body, color: colors.textTertiary, lineHeight: 20 }}>{item.message}</Text>
+                <Text style={{ fontSize: typography.size.sm, color: colors.textSecondary, lineHeight: 20 }}>{item.message}</Text>
               </View>
             </TouchableOpacity>
           ))
@@ -119,3 +168,13 @@ export default function NotificationsScreen() {
     </View>
   );
 }
+
+const styles = {
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+};

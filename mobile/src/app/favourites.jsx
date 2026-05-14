@@ -1,125 +1,144 @@
-import { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Modal } from "react-native";
+import { useEffect, useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity, Modal, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import {
-  Menu,
+  ChevronLeft,
   Search,
   MapPin,
   Star,
   Heart,
   ChevronRight,
   X,
+  HeartOff,
 } from "lucide-react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-
-const PRIMARY = "#00A896";
-const BG = "#FFF5F3";
+import { supabase } from "@/utils/supabase";
+import { colors, typography, radius, shadows } from "@/theme";
 
 const SORT_OPTIONS = ["Most Visited", "Date Added", "Highest Rated", "Nearest"];
-
-const initialFavourites = [
-  {
-    id: "1",
-    name: "Yanks Spa and Salon",
-    location: "Kwabenya, Accra",
-    rating: 3.0,
-    reviews: "1k+",
-    type: "Spa & Salon",
-    image: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400",
-  },
-  {
-    id: "2",
-    name: "Magnus Spa",
-    location: "Kwabenya, Accra",
-    rating: 4.8,
-    reviews: "820",
-    type: "Spa",
-    image: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=400",
-  },
-  {
-    id: "3",
-    name: "Elite Cuts Barber",
-    location: "Kumasi, Ghana",
-    rating: 4.7,
-    reviews: "340",
-    type: "Barber Shop",
-    image: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400",
-  },
-  {
-    id: "4",
-    name: "Sister Yaa's Spa",
-    location: "Kasoa, Accra",
-    rating: 4.6,
-    reviews: "210",
-    type: "Spa",
-    image: "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=400",
-  },
-];
 
 export default function FavouritesScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [favourites, setFavourites] = useState(initialFavourites);
+  const [favourites, setFavourites] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [sortVisible, setSortVisible] = useState(false);
-  const [sortBy, setSortBy] = useState("Most Visited");
+  const [sortBy, setSortBy] = useState("Date Added");
 
-  const handleUnfavourite = (id) =>
-    setFavourites((prev) => prev.filter((f) => f.id !== id));
+  useEffect(() => {
+    fetchFavourites();
+  }, []);
+
+  const fetchFavourites = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('favourites')
+        .select(`
+          id,
+          business:businesses (*)
+        `)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      
+      // Transform data for the UI
+      const formatted = data.map(item => ({
+        id: item.id,
+        businessId: item.business.id,
+        name: item.business.name,
+        location: `${item.business.city}, ${item.business.region || 'Ghana'}`,
+        rating: item.business.rating || 0,
+        reviews: item.business.review_count || 0,
+        type: item.business.category || 'Service',
+        image: item.business.image_url || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400",
+      }));
+
+      setFavourites(formatted);
+    } catch (err) {
+      console.error('Error fetching favourites:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnfavourite = async (id) => {
+    try {
+      // Optimistic UI update
+      setFavourites((prev) => prev.filter((f) => f.id !== id));
+      
+      const { error } = await supabase
+        .from('favourites')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error removing favourite:', err);
+      // Re-fetch if it fails to sync correctly
+      fetchFavourites();
+    }
+  };
 
   return (
-    <View style={{ flex: 1, backgroundColor: BG }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style="dark" />
 
       {/* Header */}
       <View
         style={{
-          backgroundColor: BG,
+          backgroundColor: colors.card,
           paddingTop: insets.top + 16,
           paddingHorizontal: 22,
-          paddingBottom: 12,
+          paddingBottom: 16,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
+          borderBottomWidth: 1,
+          borderBottomColor: colors.borderLight,
         }}
       >
         <TouchableOpacity
+          onPress={() => router.back()}
           style={{
             width: 40,
             height: 40,
             borderRadius: 20,
-            backgroundColor: "#fff",
+            backgroundColor: colors.inputBg,
             alignItems: "center",
             justifyContent: "center",
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.06,
-            shadowRadius: 4,
-            elevation: 1,
           }}
         >
-          <Menu size={20} color="#1A1A1A" />
+          <ChevronLeft size={22} color={colors.text} />
         </TouchableOpacity>
-        <Text style={{ fontSize: 18, fontWeight: "800", color: "#1A1A1A" }}>
-          Favourites
+        
+        <Text style={{ 
+          fontSize: typography.size.xl, 
+          fontWeight: typography.weight.extrabold, 
+          color: colors.text 
+        }}>
+          My Favourites
         </Text>
+
         <TouchableOpacity
           style={{
             width: 40,
             height: 40,
             borderRadius: 20,
-            backgroundColor: "#fff",
+            backgroundColor: colors.inputBg,
             alignItems: "center",
             justifyContent: "center",
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.06,
-            shadowRadius: 4,
-            elevation: 1,
           }}
         >
-          <Search size={18} color="#1A1A1A" />
+          <Search size={18} color={colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -127,173 +146,214 @@ export default function FavouritesScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 22,
-          paddingBottom: insets.bottom + 90,
+          paddingTop: 20,
+          paddingBottom: insets.bottom + 40,
+          flexGrow: 1,
         }}
       >
-        {/* Sort by */}
-        <TouchableOpacity
-          onPress={() => setSortVisible(true)}
-          style={{
-            backgroundColor: "#fff",
-            borderRadius: 16,
-            padding: 16,
-            marginBottom: 20,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.05,
-            shadowRadius: 5,
-            elevation: 1,
-          }}
-        >
-          <View>
-            <Text style={{ fontSize: 12, color: "#AAA", marginBottom: 2 }}>
-              Sort by
-            </Text>
-            <Text style={{ fontSize: 14, fontWeight: "700", color: "#1A1A1A" }}>
-              {sortBy}
-            </Text>
+        {loading ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100 }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={{ marginTop: 16, color: colors.textSecondary }}>Loading your favourites...</Text>
           </View>
-          <ChevronRight size={18} color="#CCC" />
-        </TouchableOpacity>
-
-        {/* List */}
-        {favourites.map((item) => (
-          <TouchableOpacity
-            key={item.id}
-            onPress={() =>
-              router.push({
-                pathname: "/business/detail",
-                params: { id: item.id, name: item.name },
-              })
-            }
-            style={{
-              backgroundColor: "#fff",
-              borderRadius: 20,
-              marginBottom: 14,
-              flexDirection: "row",
-              alignItems: "center",
-              padding: 14,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.06,
-              shadowRadius: 8,
-              elevation: 2,
-            }}
-          >
-            {/* Circular image */}
-            <Image
-              source={{ uri: item.image }}
-              style={{ width: 68, height: 68, borderRadius: 34 }}
-              contentFit="cover"
-            />
-
-            <View style={{ flex: 1, marginLeft: 14 }}>
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "800",
-                  color: "#1A1A1A",
-                  marginBottom: 3,
-                }}
-              >
-                {item.name}
+        ) : favourites.length === 0 ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100 }}>
+            <View style={{ 
+              width: 80, 
+              height: 80, 
+              borderRadius: 40, 
+              backgroundColor: colors.primarySurface,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 16
+            }}>
+              <HeartOff size={40} color={colors.primary} />
+            </View>
+            <Text style={{ 
+              fontSize: typography.size.xl, 
+              fontWeight: typography.weight.bold, 
+              color: colors.text,
+              marginBottom: 8
+            }}>
+              No favourites yet
+            </Text>
+            <Text style={{ 
+              textAlign: 'center', 
+              color: colors.textSecondary,
+              paddingHorizontal: 40,
+              lineHeight: 20
+            }}>
+              Start exploring businesses and save your favourites here for quick access.
+            </Text>
+            <TouchableOpacity 
+              onPress={() => router.push('/(tabs)/explore')}
+              style={{
+                marginTop: 24,
+                backgroundColor: colors.primary,
+                paddingHorizontal: 24,
+                paddingVertical: 12,
+                borderRadius: radius.pill,
+              }}
+            >
+              <Text style={{ color: colors.white, fontWeight: typography.weight.bold }}>
+                Explore Now
               </Text>
-
-              {/* Type badge */}
-              <View
-                style={{
-                  alignSelf: "flex-start",
-                  backgroundColor: "#E0F5F3",
-                  borderRadius: 20,
-                  paddingHorizontal: 9,
-                  paddingVertical: 3,
-                  marginBottom: 6,
-                }}
-              >
-                <Text
-                  style={{ fontSize: 10, fontWeight: "700", color: PRIMARY }}
-                >
-                  {item.type}
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            {/* Sort by */}
+            <TouchableOpacity
+              onPress={() => setSortVisible(true)}
+              style={{
+                backgroundColor: colors.card,
+                borderRadius: radius.lg,
+                padding: 16,
+                marginBottom: 20,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                ...shadows.sm,
+              }}
+            >
+              <View>
+                <Text style={{ fontSize: typography.size.xs, color: colors.textMuted, marginBottom: 2 }}>
+                  Sort by
+                </Text>
+                <Text style={{ fontSize: typography.size.md, fontWeight: typography.weight.bold, color: colors.text }}>
+                  {sortBy}
                 </Text>
               </View>
+              <ChevronRight size={18} color={colors.textMuted} />
+            </TouchableOpacity>
 
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <MapPin size={12} color="#999" />
-                  <Text style={{ fontSize: 11, color: "#888", marginLeft: 3 }}>
-                    {item.location}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <Star size={11} color="#FFD93D" fill="#FFD93D" />
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "700",
-                      color: "#1A1A1A",
-                      marginLeft: 3,
-                    }}
-                  >
-                    {item.rating}
-                  </Text>
-                  <Text style={{ fontSize: 10, color: "#BBB", marginLeft: 2 }}>
-                    ({item.reviews})
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Right: heart + book */}
-            <View style={{ alignItems: "center", marginLeft: 10, gap: 10 }}>
+            {/* List */}
+            {favourites.map((item) => (
               <TouchableOpacity
-                onPress={() => handleUnfavourite(item.id)}
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 17,
-                  backgroundColor: "#FFE5E5",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Heart size={16} color="#FF6B6B" fill="#FF6B6B" />
-              </TouchableOpacity>
-              <TouchableOpacity
+                key={item.id}
                 onPress={() =>
                   router.push({
-                    pathname: "/booking/date",
-                    params: {
-                      salon: item.name,
-                      service: "Service",
-                      specialist: "Any",
-                    },
+                    pathname: "/business/detail",
+                    params: { id: item.businessId, name: item.name },
                   })
                 }
                 style={{
-                  backgroundColor: PRIMARY,
-                  borderRadius: 16,
-                  paddingHorizontal: 12,
-                  paddingVertical: 7,
+                  backgroundColor: colors.card,
+                  borderRadius: radius.lg,
+                  marginBottom: 16,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  padding: 12,
+                  ...shadows.sm,
                 }}
               >
-                <Text
-                  style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}
-                >
-                  Book
-                </Text>
+                <Image
+                  source={{ uri: item.image }}
+                  style={{ width: 80, height: 80, borderRadius: radius.md }}
+                  contentFit="cover"
+                />
+
+                <View style={{ flex: 1, marginLeft: 14 }}>
+                  <Text
+                    style={{
+                      fontSize: typography.size.md,
+                      fontWeight: typography.weight.extrabold,
+                      color: colors.text,
+                      marginBottom: 4,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {item.name}
+                  </Text>
+
+                  <View
+                    style={{
+                      alignSelf: "flex-start",
+                      backgroundColor: colors.primarySurface,
+                      borderRadius: radius.pill,
+                      paddingHorizontal: 10,
+                      paddingVertical: 3,
+                      marginBottom: 8,
+                    }}
+                  >
+                    <Text
+                      style={{ fontSize: 10, fontWeight: typography.weight.bold, color: colors.primary }}
+                    >
+                      {item.type}
+                    </Text>
+                  </View>
+
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                      <MapPin size={12} color={colors.textTertiary} />
+                      <Text 
+                        style={{ fontSize: typography.size.xs, color: colors.textSecondary, marginLeft: 4 }}
+                        numberOfLines={1}
+                      >
+                        {item.location}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: "row", alignItems: "center", marginLeft: 8 }}>
+                      <Star size={11} color={colors.star} fill={colors.star} />
+                      <Text
+                        style={{
+                          fontSize: typography.size.sm,
+                          fontWeight: typography.weight.bold,
+                          color: colors.text,
+                          marginLeft: 4,
+                        }}
+                      >
+                        {item.rating}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Right actions */}
+                <View style={{ alignItems: "center", marginLeft: 12, gap: 12 }}>
+                  <TouchableOpacity
+                    onPress={() => handleUnfavourite(item.id)}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      backgroundColor: colors.errorBg,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Heart size={18} color={colors.danger} fill={colors.danger} />
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    onPress={() =>
+                      router.push({
+                        pathname: "/booking/date",
+                        params: {
+                          salon: item.name,
+                          service: "Service",
+                          specialist: "Any",
+                        },
+                      })
+                    }
+                    style={{
+                      backgroundColor: colors.primary,
+                      borderRadius: radius.md,
+                      paddingHorizontal: 14,
+                      paddingVertical: 8,
+                    }}
+                  >
+                    <Text
+                      style={{ color: colors.white, fontSize: 11, fontWeight: typography.weight.bold }}
+                    >
+                      Book
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        ))}
+            ))}
+          </>
+        )}
       </ScrollView>
 
       {/* Sort Modal */}
@@ -304,16 +364,16 @@ export default function FavouritesScreen() {
         onRequestClose={() => setSortVisible(false)}
       >
         <TouchableOpacity
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)" }}
+          style={{ flex: 1, backgroundColor: colors.overlay }}
           activeOpacity={1}
           onPress={() => setSortVisible(false)}
         />
         <View
           style={{
-            backgroundColor: "#fff",
-            borderTopLeftRadius: 28,
-            borderTopRightRadius: 28,
-            padding: 28,
+            backgroundColor: colors.card,
+            borderTopLeftRadius: 32,
+            borderTopRightRadius: 32,
+            padding: 24,
             paddingBottom: 40,
           }}
         >
@@ -322,14 +382,14 @@ export default function FavouritesScreen() {
               flexDirection: "row",
               justifyContent: "space-between",
               alignItems: "center",
-              marginBottom: 20,
+              marginBottom: 24,
             }}
           >
-            <Text style={{ fontSize: 18, fontWeight: "800", color: "#1A1A1A" }}>
+            <Text style={{ fontSize: typography.size.xl, fontWeight: typography.weight.extrabold, color: colors.text }}>
               Sort by
             </Text>
             <TouchableOpacity onPress={() => setSortVisible(false)}>
-              <X size={22} color="#888" />
+              <X size={24} color={colors.textTertiary} />
             </TouchableOpacity>
           </View>
           {SORT_OPTIONS.map((opt) => (
@@ -343,16 +403,16 @@ export default function FavouritesScreen() {
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
-                paddingVertical: 16,
+                paddingVertical: 18,
                 borderBottomWidth: 1,
-                borderBottomColor: "#F5F5F5",
+                borderBottomColor: colors.divider,
               }}
             >
               <Text
                 style={{
-                  fontSize: 15,
-                  fontWeight: "600",
-                  color: sortBy === opt ? PRIMARY : "#1A1A1A",
+                  fontSize: typography.size.lg,
+                  fontWeight: typography.weight.semibold,
+                  color: sortBy === opt ? colors.primary : colors.text,
                 }}
               >
                 {opt}
@@ -360,16 +420,16 @@ export default function FavouritesScreen() {
               {sortBy === opt && (
                 <View
                   style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 11,
-                    backgroundColor: PRIMARY,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    backgroundColor: colors.primary,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
                   <Text
-                    style={{ color: "#fff", fontSize: 13, fontWeight: "800" }}
+                    style={{ color: colors.white, fontSize: 14, fontWeight: typography.weight.bold }}
                   >
                     ✓
                   </Text>

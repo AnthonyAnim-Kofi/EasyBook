@@ -1,8 +1,9 @@
 import { useAuth } from "@/utils/auth/useAuth";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Alert } from "react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 SplashScreen.preventAutoHideAsync();
 
@@ -20,6 +21,7 @@ const queryClient = new QueryClient({
 export default function RootLayout() {
   const { initiate, isReady, auth } = useAuth();
   const router = useRouter();
+  const segments = useSegments();
 
   useEffect(() => {
     initiate();
@@ -28,13 +30,37 @@ export default function RootLayout() {
   useEffect(() => {
     if (isReady) {
       SplashScreen.hideAsync();
-      if (auth) {
-        router.replace("/(tabs)/home");
+      
+      const inAuthGroup = segments[0] === "(tabs)" || segments[0] === "business";
+      const inPublicGroup = segments[0] === "signin" || segments[0] === "signup" || segments[0] === "onboarding" || segments[0] === "forgot-password" || segments[0] === "reset-password";
+
+      if (!auth) {
+        if (!inPublicGroup) {
+          router.replace("/onboarding");
+        }
       } else {
-        router.replace("/onboarding");
+        // We have auth. If we are on root or onboarding, go to dashboard
+        if (segments.length === 0 || segments[0] === "onboarding" || segments[0] === "index") {
+          const user = typeof auth === 'string' ? JSON.parse(auth) : auth;
+          const role = user?.role || user?.user_metadata?.role;
+          
+          if (role === 'business_owner') {
+            if (user.has_business) {
+              router.replace("/business/dashboard");
+            } else {
+              // Should not happen if signin check works, but for safety:
+              import('@/services/auth').then(({ authService }) => {
+                authService.signOut();
+                Alert.alert("Access Denied", "You are not a business owner. Please register your business first.");
+              });
+            }
+          } else {
+            router.replace("/(tabs)/home");
+          }
+        }
       }
     }
-  }, [isReady, auth]);
+  }, [isReady, auth, segments]);
 
   if (!isReady) {
     return null;

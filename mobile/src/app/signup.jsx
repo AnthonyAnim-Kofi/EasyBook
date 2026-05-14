@@ -6,6 +6,7 @@ import {
   Animated,
   Platform,
   ScrollView,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -71,8 +72,17 @@ export default function SignUpScreen() {
       const cleanPhone = phone.replace(/[^0-9]/g, '');
       const numericPhone = `${cleanPrefix}${cleanPhone}`;
       
-      await authService.signUp({ fullName, email, phone: numericPhone, password });
-      router.replace("/(tabs)/home");
+      const { confirmationRequired } = await authService.signUp({ fullName, email, phone: numericPhone, password });
+      
+      if (confirmationRequired) {
+        Alert.alert(
+          "Verify your email",
+          "A confirmation link has been sent to your email. Please verify it before logging in.",
+          [{ text: "OK", onPress: () => router.replace("/signin") }]
+        );
+      } else {
+        router.replace("/(tabs)/home");
+      }
     } catch (err) {
       setError(err.message || "Sign up failed. Please try again.");
     } finally {

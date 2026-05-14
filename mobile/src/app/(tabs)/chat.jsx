@@ -1,64 +1,90 @@
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Search, MessageCircle } from "lucide-react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-
-const PRIMARY = "#00A896";
-const BG = "#F6F4F3";
-
-const chats = [
-  {
-    id: "1",
-    name: "Yanks Spa and Salon",
-    lastMsg: "Your appointment is confirmed for tomorrow!",
-    time: "10:22 AM",
-    unread: 2,
-    image: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=200",
-  },
-  {
-    id: "2",
-    name: "Elite Cuts Barber",
-    lastMsg: "Thanks for your booking, see you soon!",
-    time: "Yesterday",
-    unread: 0,
-    image: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=200",
-  },
-  {
-    id: "3",
-    name: "Magnus Spa",
-    lastMsg: "We've rescheduled your session to 3PM.",
-    time: "Mon",
-    unread: 1,
-    image: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=200",
-  },
-  {
-    id: "4",
-    name: "Luxe Beauty Studio",
-    lastMsg: "Hi! How can we help you today?",
-    time: "Sun",
-    unread: 0,
-    image: "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=200",
-  },
-];
+import { supabase } from "@/utils/supabase";
+import { colors, typography, radius, shadows } from "@/theme";
+import { format } from "date-fns";
 
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const [chats, setChats] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    fetchChats();
+  }, []);
+
+  const fetchChats = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      // In a real app, you'd have a conversations table. 
+      // Here we'll fetch unique partners from messages.
+      const { data, error } = await supabase
+        .from('messages')
+        .select(`
+          *,
+          sender:profiles!messages_sender_id_fkey(id, username, business_name, business_image_url),
+          receiver:profiles!messages_receiver_id_fkey(id, username, business_name, business_image_url)
+        `)
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Group by partner
+      const groups = {};
+      data.forEach(msg => {
+        const partner = msg.sender_id === user.id ? msg.receiver : msg.sender;
+        if (!groups[partner.id]) {
+          groups[partner.id] = {
+            id: partner.id,
+            name: partner.business_name || partner.username || 'User',
+            lastMsg: msg.text || (msg.media_type ? `Sent an ${msg.media_type}` : ''),
+            time: format(new Date(msg.created_at), 'p'),
+            unread: msg.receiver_id === user.id && !msg.is_read ? 1 : 0,
+            image: partner.business_image_url || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=200",
+            rawTime: new Date(msg.created_at)
+          };
+        } else if (msg.receiver_id === user.id && !msg.is_read) {
+          groups[partner.id].unread += 1;
+        }
+      });
+
+      setChats(Object.values(groups).sort((a, b) => b.rawTime - a.rawTime));
+    } catch (err) {
+      console.error('Error fetching chats:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filtered = chats.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <View style={{ flex: 1, backgroundColor: BG }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style="light" />
       <View
         style={{
-          backgroundColor: PRIMARY,
+          backgroundColor: colors.primary,
           paddingTop: insets.top + 16,
           paddingHorizontal: 22,
           paddingBottom: 28,
@@ -66,9 +92,9 @@ export default function ChatScreen() {
       >
         <Text
           style={{
-            fontSize: 22,
-            fontWeight: "800",
-            color: "#fff",
+            fontSize: typography.size.xxl,
+            fontWeight: typography.weight.extrabold,
+            color: colors.white,
             marginBottom: 4,
           }}
         >
@@ -76,7 +102,7 @@ export default function ChatScreen() {
         </Text>
         <Text
           style={{
-            fontSize: 13,
+            fontSize: typography.size.sm,
             color: "rgba(255,255,255,0.7)",
             marginBottom: 16,
           }}
@@ -87,21 +113,24 @@ export default function ChatScreen() {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            backgroundColor: "#fff",
-            borderRadius: 14,
+            backgroundColor: colors.white,
+            borderRadius: radius.md,
             paddingHorizontal: 14,
+            ...shadows.sm,
           }}
         >
-          <Search size={18} color="#BBBBBB" />
+          <Search size={18} color={colors.textMuted} />
           <TextInput
             placeholder="Search messages..."
-            placeholderTextColor="#BBBBBB"
+            placeholderTextColor={colors.textMuted}
+            value={search}
+            onChangeText={setSearch}
             style={{
               flex: 1,
-              paddingVertical: 13,
+              paddingVertical: 12,
               paddingHorizontal: 10,
-              fontSize: 14,
-              color: "#1A1A1A",
+              fontSize: typography.size.md,
+              color: colors.text,
             }}
           />
         </View>
@@ -109,124 +138,132 @@ export default function ChatScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 80, flexGrow: 1 }}
         style={{
           flex: 1,
-          marginTop: -12,
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          backgroundColor: BG,
+          marginTop: -16,
+          borderTopLeftRadius: radius.xl,
+          borderTopRightRadius: radius.xl,
+          backgroundColor: colors.background,
         }}
       >
-        <View style={{ paddingHorizontal: 22, paddingTop: 20 }}>
-          {chats.map((chat, index) => (
-            <TouchableOpacity
-              key={chat.id}
-              onPress={() => router.push({
-                pathname: "/business/message",
-                params: { id: chat.id, name: chat.name, avatar: chat.image }
-              })}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                backgroundColor: "#fff",
-                borderRadius: 16,
-                padding: 16,
-                marginBottom: 12,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.05,
-                shadowRadius: 6,
-                elevation: 2,
-              }}
-            >
-              <View style={{ position: "relative", marginRight: 14 }}>
-                <Image
-                  source={{ uri: chat.image }}
-                  style={{ width: 52, height: 52, borderRadius: 26 }}
-                  contentFit="cover"
-                />
-                <View
-                  style={{
-                    position: "absolute",
-                    bottom: 0,
-                    right: 0,
-                    width: 12,
-                    height: 12,
-                    borderRadius: 6,
-                    backgroundColor: "#6BCB77",
-                    borderWidth: 2,
-                    borderColor: "#fff",
-                  }}
-                />
+        <View style={{ paddingHorizontal: 22, paddingTop: 24 }}>
+          {loading ? (
+            <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
+          ) : filtered.length === 0 ? (
+            <View style={{ alignItems: "center", paddingTop: 80 }}>
+              <View style={{
+                width: 80,
+                height: 80,
+                borderRadius: 40,
+                backgroundColor: colors.primarySurface,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 20
+              }}>
+                <MessageCircle size={40} color={colors.primary} />
               </View>
-              <View style={{ flex: 1 }}>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: 4,
-                  }}
-                >
-                  <Text
+              <Text
+                style={{
+                  fontSize: typography.size.lg,
+                  fontWeight: typography.weight.bold,
+                  color: colors.text,
+                  marginTop: 16,
+                }}
+              >
+                No messages yet
+              </Text>
+              <Text style={{ fontSize: typography.size.md, color: colors.textTertiary, marginTop: 6, textAlign: 'center' }}>
+                Book a service to start chatting with providers
+              </Text>
+            </View>
+          ) : (
+            filtered.map((chat) => (
+              <TouchableOpacity
+                key={chat.id}
+                onPress={() => router.push({
+                  pathname: "/business/message",
+                  params: { id: chat.id, name: chat.name, avatar: chat.image }
+                })}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: colors.card,
+                  borderRadius: radius.lg,
+                  padding: 16,
+                  marginBottom: 12,
+                  ...shadows.sm,
+                }}
+              >
+                <View style={{ position: "relative", marginRight: 14 }}>
+                  <Image
+                    source={{ uri: chat.image }}
+                    style={{ width: 56, height: 56, borderRadius: 28 }}
+                    contentFit="cover"
+                  />
+                  <View
                     style={{
-                      fontSize: 15,
-                      fontWeight: "700",
-                      color: "#1A1A1A",
+                      position: "absolute",
+                      bottom: 0,
+                      right: 0,
+                      width: 14,
+                      height: 14,
+                      borderRadius: 7,
+                      backgroundColor: "#6BCB77",
+                      borderWidth: 2,
+                      borderColor: colors.card,
+                    }}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 4,
                     }}
                   >
-                    {chat.name}
-                  </Text>
-                  <Text style={{ fontSize: 11, color: "#AAA" }}>
-                    {chat.time}
+                    <Text
+                      style={{
+                        fontSize: typography.size.md,
+                        fontWeight: typography.weight.bold,
+                        color: colors.text,
+                      }}
+                    >
+                      {chat.name}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                      {chat.time}
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: typography.size.sm, color: colors.textSecondary }} numberOfLines={1}>
+                    {chat.lastMsg}
                   </Text>
                 </View>
-                <Text style={{ fontSize: 13, color: "#888" }} numberOfLines={1}>
-                  {chat.lastMsg}
-                </Text>
-              </View>
-              {chat.unread > 0 && (
-                <View
-                  style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 10,
-                    backgroundColor: PRIMARY,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginLeft: 8,
-                  }}
-                >
-                  <Text
-                    style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}
+                {chat.unread > 0 && (
+                  <View
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 11,
+                      backgroundColor: colors.primary,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginLeft: 8,
+                    }}
                   >
-                    {chat.unread}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))}
+                    <Text
+                      style={{ color: colors.white, fontSize: 10, fontWeight: typography.weight.bold }}
+                    >
+                      {chat.unread}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))
+          )}
         </View>
-
-        {chats.length === 0 && (
-          <View style={{ alignItems: "center", paddingTop: 80 }}>
-            <MessageCircle size={60} color="#DDD" />
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "700",
-                color: "#CCC",
-                marginTop: 16,
-              }}
-            >
-              No messages yet
-            </Text>
-            <Text style={{ fontSize: 14, color: "#BBB", marginTop: 6 }}>
-              Book a service to start chatting
-            </Text>
-          </View>
-        )}
       </ScrollView>
     </View>
   );

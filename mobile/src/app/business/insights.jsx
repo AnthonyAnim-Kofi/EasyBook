@@ -1,82 +1,20 @@
-import { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Modal } from "react-native";
+import { useState, useEffect } from "react";
+import { View, Text, ScrollView, TouchableOpacity, Modal, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { Menu, ChevronDown, Star, X } from "lucide-react-native";
+import { ChevronDown, Star, X, TrendingUp, BarChart3, Users } from "lucide-react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import BusinessTabBar from "@/components/BusinessTabBar";
-
-const PRIMARY = "#00A896";
-const BG = "#FFFBF0";
+import { supabase } from "@/utils/supabase";
+import { colors, typography, radius, shadows } from "@/theme";
+import { format, startOfMonth, endOfMonth, subMonths, formatDistanceToNow } from "date-fns";
 
 const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
 ];
-const YEARS = ["2024", "2025", "2026", "2027"];
-
-const INITIAL_STATS = [
-  { label: "Bookings", value: "25", color: "#E0F5F3" },
-  { label: "Shares", value: "10", color: "#E8F4FF" },
-  { label: "Reviews", value: "20", color: "#FFF0E8" },
-];
-
-const feedbacks = [
-  {
-    id: "1",
-    name: "Abena M.",
-    avatar:
-      "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=100",
-    rating: 5,
-    service: "Haircut",
-    comment:
-      "Amazing experience! Will definitely come back. The staff were so friendly and professional.",
-    date: "2 days ago",
-  },
-  {
-    id: "2",
-    name: "Kwame A.",
-    avatar:
-      "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100",
-    rating: 4,
-    service: "Spa",
-    comment:
-      "Really relaxing. The environment was clean and the service was top notch.",
-    date: "1 week ago",
-  },
-  {
-    id: "3",
-    name: "Ama O.",
-    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100",
-    rating: 5,
-    service: "Facial",
-    comment:
-      "Best facial I've ever had! My skin is glowing. Highly recommend this place.",
-    date: "2 weeks ago",
-  },
-  {
-    id: "4",
-    name: "Kojo D.",
-    avatar:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100",
-    rating: 3,
-    service: "Haircut",
-    comment:
-      "Good service but the wait was a bit long. The quality of the cut was great though.",
-    date: "3 weeks ago",
-  },
-];
+const YEARS = ["2024", "2025", "2026"];
 
 function StarRow({ rating }) {
   return (
@@ -121,7 +59,7 @@ function DatePickerModal({
       />
       <View
         style={{
-          backgroundColor: "#fff",
+          backgroundColor: colors.card,
           borderTopLeftRadius: 28,
           borderTopRightRadius: 28,
           padding: 24,
@@ -136,32 +74,19 @@ function DatePickerModal({
             marginBottom: 20,
           }}
         >
-          <Text style={{ fontSize: 18, fontWeight: "800", color: "#1A1A1A" }}>
+          <Text style={{ fontSize: 18, fontWeight: typography.weight.extrabold, color: colors.text }}>
             Select Date Range
           </Text>
           <TouchableOpacity onPress={onClose}>
-            <X size={22} color="#888" />
+            <X size={22} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
         <View style={{ flexDirection: "row", gap: 16 }}>
           {/* From */}
           <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                fontSize: 12,
-                fontWeight: "700",
-                color: "#AAA",
-                marginBottom: 10,
-                textAlign: "center",
-              }}
-            >
-              FROM
-            </Text>
-            <ScrollView
-              style={{ height: 180 }}
-              showsVerticalScrollIndicator={false}
-            >
+            <Text style={{ fontSize: 10, fontWeight: "700", color: colors.textMuted, marginBottom: 10, textAlign: "center" }}>FROM</Text>
+            <ScrollView style={{ height: 180 }} showsVerticalScrollIndicator={false}>
               {MONTHS.map((m) => (
                 <TouchableOpacity
                   key={m}
@@ -170,51 +95,19 @@ function DatePickerModal({
                     paddingVertical: 10,
                     alignItems: "center",
                     borderRadius: 10,
-                    backgroundColor:
-                      selStartMonth === m ? "#E0F5F3" : "transparent",
+                    backgroundColor: selStartMonth === m ? colors.inputBg : "transparent",
                   }}
                 >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: selStartMonth === m ? "700" : "400",
-                      color: selStartMonth === m ? PRIMARY : "#555",
-                    }}
-                  >
-                    {m}
-                  </Text>
+                  <Text style={{ fontSize: 14, fontWeight: selStartMonth === m ? "700" : "400", color: selStartMonth === m ? colors.primary : colors.textSecondary }}>{m}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
 
-          {/* Divider */}
-          <View
-            style={{
-              width: 1.5,
-              backgroundColor: PRIMARY,
-              alignSelf: "stretch",
-              marginVertical: 30,
-            }}
-          />
-
           {/* To */}
           <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                fontSize: 12,
-                fontWeight: "700",
-                color: "#AAA",
-                marginBottom: 10,
-                textAlign: "center",
-              }}
-            >
-              TO
-            </Text>
-            <ScrollView
-              style={{ height: 180 }}
-              showsVerticalScrollIndicator={false}
-            >
+            <Text style={{ fontSize: 10, fontWeight: "700", color: colors.textMuted, marginBottom: 10, textAlign: "center" }}>TO</Text>
+            <ScrollView style={{ height: 180 }} showsVerticalScrollIndicator={false}>
               {MONTHS.map((m) => (
                 <TouchableOpacity
                   key={m}
@@ -223,59 +116,14 @@ function DatePickerModal({
                     paddingVertical: 10,
                     alignItems: "center",
                     borderRadius: 10,
-                    backgroundColor:
-                      selEndMonth === m ? "#E0F5F3" : "transparent",
+                    backgroundColor: selEndMonth === m ? colors.inputBg : "transparent",
                   }}
                 >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: selEndMonth === m ? "700" : "400",
-                      color: selEndMonth === m ? PRIMARY : "#555",
-                    }}
-                  >
-                    {m}
-                  </Text>
+                  <Text style={{ fontSize: 14, fontWeight: selEndMonth === m ? "700" : "400", color: selEndMonth === m ? colors.primary : colors.textSecondary }}>{m}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
-        </View>
-
-        {/* Year row */}
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-around",
-            marginTop: 16,
-            marginBottom: 20,
-          }}
-        >
-          {YEARS.map((y) => (
-            <TouchableOpacity
-              key={y}
-              onPress={() => {
-                setSelStartYear(y);
-                setSelEndYear(y);
-              }}
-              style={{
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                borderRadius: 20,
-                backgroundColor: selStartYear === y ? PRIMARY : "#F5F5F5",
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: "700",
-                  color: selStartYear === y ? "#fff" : "#555",
-                }}
-              >
-                {y}
-              </Text>
-            </TouchableOpacity>
-          ))}
         </View>
 
         <TouchableOpacity
@@ -284,15 +132,14 @@ function DatePickerModal({
             onClose();
           }}
           style={{
-            backgroundColor: PRIMARY,
+            backgroundColor: colors.primary,
             borderRadius: 30,
             paddingVertical: 16,
             alignItems: "center",
+            marginTop: 20,
           }}
         >
-          <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>
-            Apply
-          </Text>
+          <Text style={{ color: colors.white, fontSize: 16, fontWeight: "700" }}>Apply</Text>
         </TouchableOpacity>
       </View>
     </Modal>
@@ -303,29 +150,108 @@ export default function InsightsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [datePickerVisible, setDatePickerVisible] = useState(false);
-  const [startMonth, setStartMonth] = useState("May");
-  const [startYear, setStartYear] = useState("2025");
-  const [endMonth, setEndMonth] = useState("May");
-  const [endYear, setEndYear] = useState("2026");
-  const [currentStats, setCurrentStats] = useState(INITIAL_STATS);
+  const [startMonth, setStartMonth] = useState(format(subMonths(new Date(), 1), "MMMM"));
+  const [startYear, setStartYear] = useState("2024");
+  const [endMonth, setEndMonth] = useState(format(new Date(), "MMMM"));
+  const [endYear, setEndYear] = useState("2024");
+  
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState([
+    { label: "Bookings", value: "0", icon: TrendingUp, color: "#E0F5F3" },
+    { label: "Revenue", value: "GHS 0", icon: BarChart3, color: "#E8F4FF" },
+    { label: "Customers", value: "0", icon: Users, color: "#FFF0E8" },
+  ]);
+  const [feedbacks, setFeedbacks] = useState([]);
+
+  useEffect(() => {
+    fetchInsights();
+  }, []);
+
+  const fetchInsights = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // 1. Fetch the business owned by this user
+      const { data: business, error: bizError } = await supabase
+        .from('businesses')
+        .select('id')
+        .eq('owner_id', user.id)
+        .single();
+
+      if (bizError) {
+        console.warn('Business not found for user:', bizError);
+        return;
+      }
+
+      // 2. Fetch bookings for statistics
+      const { data: bookings, error: bError } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('business_id', business.id);
+
+      if (bError) throw bError;
+
+      const completedBookings = bookings.filter(b => b.status === 'completed');
+      const uniqueCustomers = new Set(bookings.map(b => b.user_id)).size;
+      
+      // Calculate revenue based on actual total_price in bookings
+      const totalRevenue = completedBookings.reduce((sum, b) => sum + (b.total_price || 0), 0);
+
+      setStats([
+        { label: "Bookings", value: bookings.length.toString(), icon: TrendingUp, color: "#E0F5F3" },
+        { label: "Revenue", value: `GHS ${totalRevenue}`, icon: BarChart3, color: "#E8F4FF" },
+        { label: "Customers", value: uniqueCustomers.toString(), icon: Users, color: "#FFF0E8" },
+      ]);
+
+      // 3. Fetch real reviews joined with customer profiles
+      const { data: reviews, error: rError } = await supabase
+        .from('reviews')
+        .select(`
+          id,
+          rating,
+          comment,
+          created_at,
+          profiles:user_id (
+            full_name,
+            avatar_url
+          )
+        `)
+        .eq('business_id', business.id)
+        .order('created_at', { ascending: false });
+
+      if (rError) throw rError;
+
+      const formattedFeedbacks = reviews.map(r => ({
+        id: r.id,
+        name: r.profiles?.full_name || "Anonymous",
+        avatar: r.profiles?.avatar_url || "https://ui-avatars.com/api/?name=" + (r.profiles?.full_name || "A"),
+        rating: r.rating,
+        service: "Service", // We could join with bookings/packages for more detail
+        comment: r.comment,
+        date: formatDistanceToNow(new Date(r.created_at)) + " ago"
+      }));
+
+      setFeedbacks(formattedFeedbacks);
+
+    } catch (err) {
+      console.error('Error fetching insights:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleApply = (sm, sy, em, ey) => {
     setStartMonth(sm);
     setStartYear(sy);
     setEndMonth(em);
     setEndYear(ey);
-    
-    // Simulate data fetching/filtering based on date range
-    // In a real app, this would be an API call
-    setCurrentStats([
-      { label: "Bookings", value: Math.floor(Math.random() * 50 + 10).toString(), color: "#E0F5F3" },
-      { label: "Shares", value: Math.floor(Math.random() * 20 + 5).toString(), color: "#E8F4FF" },
-      { label: "Reviews", value: Math.floor(Math.random() * 30 + 5).toString(), color: "#FFF0E8" },
-    ]);
+    fetchInsights();
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: BG }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style="dark" />
 
       {/* Header */}
@@ -333,39 +259,24 @@ export default function InsightsScreen() {
         style={{
           paddingTop: insets.top + 16,
           paddingHorizontal: 22,
-          paddingBottom: 12,
-          flexDirection: "row",
+          paddingBottom: 16,
+          backgroundColor: colors.background,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.borderLight,
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: "center",
         }}
       >
-        <TouchableOpacity
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: "#fff",
-            alignItems: "center",
-            justifyContent: "center",
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.06,
-            shadowRadius: 4,
-            elevation: 1,
-          }}
-        >
-          <Menu size={20} color="#1A1A1A" />
-        </TouchableOpacity>
-        <Text style={{ fontSize: 18, fontWeight: "800", color: "#1A1A1A" }}>
+        <Text style={{ fontSize: 20, fontWeight: typography.weight.extrabold, color: colors.text }}>
           Performance
         </Text>
-        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 22,
+          paddingTop: 20,
           paddingBottom: insets.bottom + 90,
         }}
       >
@@ -376,132 +287,97 @@ export default function InsightsScreen() {
             flexDirection: "row",
             alignItems: "center",
             marginBottom: 24,
+            alignSelf: 'center',
+            backgroundColor: colors.inputBg,
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            borderRadius: 20,
           }}
         >
-          <Text style={{ fontSize: 14, color: PRIMARY, fontWeight: "600" }}>
-            From {startMonth} {startYear} to {endMonth} {endYear}
+          <Text style={{ fontSize: 13, color: colors.primary, fontWeight: "600" }}>
+            {startMonth} {startYear} - {endMonth} {endYear}
           </Text>
-          <ChevronDown size={16} color={PRIMARY} style={{ marginLeft: 4 }} />
+          <ChevronDown size={14} color={colors.primary} style={{ marginLeft: 6 }} />
         </TouchableOpacity>
 
-        {/* Stat boxes */}
-        <View style={{ flexDirection: "row", gap: 12, marginBottom: 28 }}>
-          {currentStats.map((stat) => (
-            <View
-              key={stat.label}
-              style={{
-                flex: 1,
-                backgroundColor: stat.color,
-                borderRadius: 20,
-                padding: 18,
-                alignItems: "center",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.04,
-                shadowRadius: 6,
-                elevation: 1,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 32,
-                  fontWeight: "800",
-                  color: "#1A1A1A",
-                  marginBottom: 4,
-                }}
-              >
-                {stat.value}
-              </Text>
-              <Text style={{ fontSize: 12, color: "#666", fontWeight: "600" }}>
-                {stat.label}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Feedback section */}
-        <Text
-          style={{
-            fontSize: 17,
-            fontWeight: "800",
-            color: "#1A1A1A",
-            marginBottom: 16,
-          }}
-        >
-          Feedback from customers
-        </Text>
-
-        {feedbacks.map((fb) => (
-          <View
-            key={fb.id}
-            style={{
-              backgroundColor: "#fff",
-              borderRadius: 20,
-              padding: 16,
-              marginBottom: 14,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 8,
-              elevation: 2,
-            }}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                marginBottom: 10,
-              }}
-            >
-              <Image
-                source={{ uri: fb.avatar }}
-                style={{ width: 44, height: 44, borderRadius: 22 }}
-                contentFit="cover"
-              />
-              <View style={{ flex: 1, marginLeft: 12 }}>
+        {loading ? (
+          <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
+        ) : (
+          <>
+            {/* Stat boxes */}
+            <View style={{ flexDirection: "row", gap: 12, marginBottom: 32 }}>
+              {stats.map((stat) => (
                 <View
+                  key={stat.label}
                   style={{
-                    flexDirection: "row",
+                    flex: 1,
+                    backgroundColor: colors.card,
+                    borderRadius: radius.xl,
+                    padding: 16,
                     alignItems: "center",
-                    justifyContent: "space-between",
+                    ...shadows.sm,
+                    borderBottomWidth: 3,
+                    borderBottomColor: stat.color,
                   }}
                 >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: "700",
-                      color: "#1A1A1A",
-                    }}
-                  >
-                    {fb.name}
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: stat.color, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                    <stat.icon size={18} color={colors.text} />
+                  </View>
+                  <Text style={{ fontSize: 22, fontWeight: typography.weight.extrabold, color: colors.text, marginBottom: 2 }}>
+                    {stat.value}
                   </Text>
-                  <Text style={{ fontSize: 11, color: "#AAA" }}>{fb.date}</Text>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary, fontWeight: "600" }}>
+                    {stat.label}
+                  </Text>
                 </View>
-                <StarRow rating={fb.rating} />
-              </View>
+              ))}
             </View>
-            <View
-              style={{
-                alignSelf: "flex-start",
-                backgroundColor: "#E0F5F3",
-                borderRadius: 20,
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                marginBottom: 8,
-              }}
-            >
-              <Text style={{ fontSize: 11, fontWeight: "600", color: PRIMARY }}>
-                {fb.service}
+
+            {/* Feedback section */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: typography.weight.extrabold, color: colors.text }}>
+                Customer Feedback
               </Text>
+              <TouchableOpacity>
+                <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '700' }}>See All</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={{ fontSize: 13, color: "#555", lineHeight: 20 }}>
-              {fb.comment}
-            </Text>
-          </View>
-        ))}
+
+            {feedbacks.map((fb) => (
+              <View
+                key={fb.id}
+                style={{
+                  backgroundColor: colors.card,
+                  borderRadius: radius.xl,
+                  padding: 16,
+                  marginBottom: 14,
+                  ...shadows.sm,
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
+                  <Image
+                    source={{ uri: fb.avatar }}
+                    style={{ width: 44, height: 44, borderRadius: 22 }}
+                    contentFit="cover"
+                  />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                      <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>{fb.name}</Text>
+                      <Text style={{ fontSize: 11, color: colors.textMuted }}>{fb.date}</Text>
+                    </View>
+                    <StarRow rating={fb.rating} />
+                  </View>
+                </View>
+                <View style={{ alignSelf: "flex-start", backgroundColor: colors.inputBg, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 8 }}>
+                  <Text style={{ fontSize: 10, fontWeight: "700", color: colors.primary }}>{fb.service}</Text>
+                </View>
+                <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 20 }}>{fb.comment}</Text>
+              </View>
+            ))}
+          </>
+        )}
       </ScrollView>
 
-      {/* Replace the old bottom tab bar with: */}
       <BusinessTabBar active="Insights" />
 
       <DatePickerModal

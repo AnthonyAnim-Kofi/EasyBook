@@ -6,6 +6,7 @@ import {
   Animated,
   ScrollView,
   Platform,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -78,6 +79,7 @@ export default function SignInScreen() {
 
     try {
       const data = await authService.signIn({ email, password });
+      const user = data.user;
       
       if (rememberMe) {
         await setSavedEmail(email);
@@ -85,7 +87,18 @@ export default function SignInScreen() {
         await removeSavedEmail();
       }
 
-      if (isBusiness || data.user.role === 'business_owner') {
+      // Check if business owner has a business
+      if (user.role === 'business_owner' || isBusiness) {
+        if (!user.has_business) {
+          await authService.signOut();
+          Alert.alert(
+            "Access Denied",
+            "You are not a business owner. Please register your business first.",
+            [{ text: "OK" }]
+          );
+          setLoading(false);
+          return;
+        }
         router.replace("/business/dashboard");
       } else {
         router.replace("/(tabs)/home");
