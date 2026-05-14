@@ -13,6 +13,8 @@ export default function InputField({
   keyboardType,
   secureTextEntry,
   autoCapitalize = 'none',
+  textContentType,
+  autoComplete,
   onFocus,
   onBlur,
   right,
@@ -80,6 +82,8 @@ export default function InputField({
           keyboardType={keyboardType || 'default'}
           secureTextEntry={secureTextEntry}
           autoCapitalize={autoCapitalize}
+          textContentType={textContentType}
+          autoComplete={autoComplete}
           onFocus={onFocus}
           onBlur={onBlur}
           multiline={multiline}

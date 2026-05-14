@@ -66,8 +66,12 @@ export default function SignUpScreen() {
     setLoading(true);
 
     try {
-      const fullPhone = `${phonePrefix}${phone.replace(/\s/g, '')}`;
-      await authService.signUp({ fullName, email, phone: fullPhone, password });
+      // Clean prefix and phone to be numeric only
+      const cleanPrefix = phonePrefix.replace(/[^0-9]/g, '');
+      const cleanPhone = phone.replace(/[^0-9]/g, '');
+      const numericPhone = `${cleanPrefix}${cleanPhone}`;
+      
+      await authService.signUp({ fullName, email, phone: numericPhone, password });
       router.replace("/(tabs)/home");
     } catch (err) {
       setError(err.message || "Sign up failed. Please try again.");
@@ -180,7 +184,9 @@ export default function SignUpScreen() {
               variant="teal" 
               onFocus={handleFocus} 
               onBlur={handleBlur} 
-              error={fieldErrors.fullName} 
+              error={fieldErrors.fullName}
+              textContentType="name"
+              autoComplete="name"
             />
             
             <InputField 
@@ -193,7 +199,9 @@ export default function SignUpScreen() {
               variant="teal" 
               onFocus={handleFocus} 
               onBlur={handleBlur} 
-              error={fieldErrors.email} 
+              error={fieldErrors.email}
+              textContentType="emailAddress"
+              autoComplete="email"
             />
             
             <InputField 
@@ -207,7 +215,9 @@ export default function SignUpScreen() {
               variant="teal" 
               onFocus={handleFocus} 
               onBlur={handleBlur} 
-              error={fieldErrors.phone} 
+              error={fieldErrors.phone}
+              textContentType="telephoneNumber"
+              autoComplete="tel"
             />
 
             <InputField
@@ -221,6 +231,8 @@ export default function SignUpScreen() {
               onFocus={handleFocus} 
               onBlur={handleBlur} 
               error={fieldErrors.password}
+              textContentType="newPassword"
+              autoComplete="password-new"
               right={
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                   {showPassword ? <EyeOff size={18} color={colors.primary} /> : <Eye size={18} color={colors.primary} />}

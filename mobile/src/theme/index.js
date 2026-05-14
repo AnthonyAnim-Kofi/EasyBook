@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 /**
  * EasyBook Design System
  * Centralized theme tokens — import these instead of hardcoding values.
@@ -127,6 +129,11 @@ export const shadows = {
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 2px 6px rgba(0,0,0,0.05)',
+      },
+    }),
   },
   md: {
     shadowColor: '#000',
@@ -134,6 +141,11 @@ export const shadows = {
     shadowOpacity: 0.07,
     shadowRadius: 10,
     elevation: 3,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 3px 10px rgba(0,0,0,0.07)',
+      },
+    }),
   },
   lg: {
     shadowColor: '#000',
@@ -141,6 +153,11 @@ export const shadows = {
     shadowOpacity: 0.12,
     shadowRadius: 16,
     elevation: 10,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 8px 16px rgba(0,0,0,0.12)',
+      },
+    }),
   },
   primary: {
     shadowColor: '#00A896',
@@ -148,6 +165,11 @@ export const shadows = {
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 5,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 6px 12px rgba(0,168,150,0.3)',
+      },
+    }),
   },
   primaryStrong: {
     shadowColor: '#00A896',
@@ -155,6 +177,11 @@ export const shadows = {
     shadowOpacity: 0.35,
     shadowRadius: 12,
     elevation: 6,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 6px 12px rgba(0,168,150,0.35)',
+      },
+    }),
   },
 };
 

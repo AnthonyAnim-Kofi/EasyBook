@@ -57,6 +57,6 @@ app.use((err, _req, res, _next) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🚀 EasyBook API running at http://localhost:${PORT}`);
-  console.log(`   LAN:    http://172.21.0.106:${PORT}/api`);
+  console.log(`   LAN:    http://192.168.240.196:${PORT}/api`);
   console.log(`   Health: http://localhost:${PORT}/api/health\n`);
 });

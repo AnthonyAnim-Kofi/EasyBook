@@ -34,6 +34,7 @@ import InputField from "@/components/InputField";
 import Button from "@/components/Button";
 import { colors, typography, radius, shadows, spacing } from "@/theme";
 import authService from "@/services/auth";
+import { supabase } from "@/utils/supabase";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const TOTAL_STEPS = 3;
@@ -302,11 +303,14 @@ export default function BusinessSignUpScreen() {
     setLoading(true);
 
     try {
-      const fullPhone = `${phonePrefix}${phone.replace(/\s/g, '')}`;
-      await authService.signUp({
+      const cleanPrefix = phonePrefix.replace(/[^0-9]/g, '');
+      const cleanPhone = phone.replace(/[^0-9]/g, '');
+      const numericPhone = `${cleanPrefix}${cleanPhone}`;
+
+      const { user } = await authService.signUp({
         fullName,
         email,
-        phone: fullPhone,
+        phone: numericPhone,
         password,
         role: "business_owner",
       });
@@ -319,15 +323,30 @@ export default function BusinessSignUpScreen() {
         finalCategories.push(otherCategoryText);
       }
 
-      // Update the business profile
-      try {
-        await authService.updateProfile({
-          business_name: bizName,
-          business_location: location,
-          business_category: finalCategories.join(', '),
+      // 1. Update the profile with business-specific info
+      await authService.updateProfile({
+        business_name: bizName,
+        business_location: location,
+        business_category: finalCategories.join(', '),
+      });
+
+      // 2. Create the business record in the 'businesses' table
+      const { error: bizError } = await supabase
+        .from('businesses')
+        .insert({
+          owner_id: user.id,
+          name: bizName,
+          phone: numericPhone, // Added numeric phone
+          city: location.split(',').pop()?.trim() || "Takoradi", 
+          address: location,
+          category: finalCategories[0] || "General",
+          services_tags: finalCategories,
+          rating: 4.5,
+          image_url: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800",
         });
-      } catch (_) {
-        // Non-critical
+
+      if (bizError) {
+        console.error('Error creating business record:', bizError);
       }
 
       router.replace("/business/dashboard");
@@ -611,6 +630,8 @@ export default function BusinessSignUpScreen() {
                   onFocus={handleFocus}
                   onBlur={handleBlur}
                   error={fieldErrors.fullName}
+                  textContentType="name"
+                  autoComplete="name"
                 />
 
                 <InputField
@@ -624,6 +645,8 @@ export default function BusinessSignUpScreen() {
                   onFocus={handleFocus}
                   onBlur={handleBlur}
                   error={fieldErrors.email}
+                  textContentType="emailAddress"
+                  autoComplete="email"
                 />
 
                 <InputField
@@ -638,6 +661,8 @@ export default function BusinessSignUpScreen() {
                   onFocus={handleFocus}
                   onBlur={handleBlur}
                   error={fieldErrors.phone}
+                  textContentType="telephoneNumber"
+                  autoComplete="tel"
                 />
 
                 <View
@@ -685,6 +710,8 @@ export default function BusinessSignUpScreen() {
                   onFocus={handleFocus}
                   onBlur={handleBlur}
                   error={fieldErrors.password}
+                  textContentType="newPassword"
+                  autoComplete="password-new"
                   right={
                     <TouchableOpacity onPress={() => setShowPass(!showPass)}>
                       {showPass ? (
@@ -707,6 +734,8 @@ export default function BusinessSignUpScreen() {
                   onFocus={handleFocus}
                   onBlur={handleBlur}
                   error={fieldErrors.confirm}
+                  textContentType="newPassword"
+                  autoComplete="password-new"
                   right={
                     <TouchableOpacity
                       onPress={() => setShowConfirm(!showConfirm)}

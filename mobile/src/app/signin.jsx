@@ -209,6 +209,8 @@ export default function SignInScreen() {
               variant="teal"
               onFocus={handleFocus}
               onBlur={handleBlur}
+              textContentType="emailAddress"
+              autoComplete="email"
             />
 
             <InputField
@@ -221,6 +223,8 @@ export default function SignInScreen() {
               variant="teal"
               onFocus={handleFocus}
               onBlur={handleBlur}
+              textContentType="password"
+              autoComplete="password"
               right={
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                   {showPassword ? (
