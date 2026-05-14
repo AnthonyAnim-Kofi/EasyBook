@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Change this to your backend URL
 const BASE_URL = __DEV__
-  ? 'http://localhost:3001/api'  // Development
+  ? 'http://172.21.0.106:3001/api'  // Development — use your PC's LAN IP so phones can connect
   : 'https://api.easybook.com/api'; // Production
 
 const TOKEN_KEY = 'easybook_auth_token';

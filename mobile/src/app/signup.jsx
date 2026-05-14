@@ -5,15 +5,16 @@ import {
   TouchableOpacity,
   Animated,
   Platform,
+  ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { User, Mail, Phone, Lock, Eye, EyeOff, ChevronLeft } from "lucide-react-native";
+import { User, Mail, Phone, Lock, Eye, EyeOff, ChevronLeft, Sparkles } from "lucide-react-native";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import InputField from "@/components/InputField";
 import Button from "@/components/Button";
-import { colors, typography } from "@/theme";
+import { colors, typography, radius } from "@/theme";
 import authService from "@/services/auth";
 
 export default function SignUpScreen() {
@@ -21,6 +22,7 @@ export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [phonePrefix, setPhonePrefix] = useState("+233");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -37,14 +39,21 @@ export default function SignUpScreen() {
   const handleFocus = () => { if (Platform.OS !== "web") animateTo(24); };
   const handleBlur = () => { if (Platform.OS !== "web") animateTo(insets.bottom + 24); };
 
+  const handlePhoneChange = (text) => {
+    // Only allow digits
+    const cleaned = text.replace(/[^0-9]/g, '');
+    setPhone(cleaned);
+  };
+
   const validate = () => {
     const errors = {};
     if (!fullName.trim()) errors.fullName = "Full name is required.";
     if (!email.trim()) errors.email = "Email is required.";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "Invalid email address.";
-    if (phone && !/^(\+233|0)(2[0-9]|5[0-9])[0-9]{7}$/.test(phone.replace(/\s/g, ''))) {
-      errors.phone = "Enter a valid Ghana phone number (e.g. 0241234567).";
-    }
+    
+    if (!phone.trim()) errors.phone = "Phone number is required.";
+    else if (phone.length < 7) errors.phone = "Invalid phone number.";
+    
     if (!password) errors.password = "Password is required.";
     else if (password.length < 6) errors.password = "Password must be at least 6 characters.";
     setFieldErrors(errors);
@@ -57,7 +66,8 @@ export default function SignUpScreen() {
     setLoading(true);
 
     try {
-      await authService.signUp({ fullName, email, phone, password });
+      const fullPhone = `${phonePrefix}${phone.replace(/\s/g, '')}`;
+      await authService.signUp({ fullName, email, phone: fullPhone, password });
       router.replace("/(tabs)/home");
     } catch (err) {
       setError(err.message || "Sign up failed. Please try again.");
@@ -68,72 +78,189 @@ export default function SignUpScreen() {
 
   return (
     <KeyboardAvoidingAnimatedView style={{ flex: 1 }} behavior="padding">
-      <StatusBar style="dark" />
-      <View style={{ flex: 1, backgroundColor: colors.backgroundAlt }}>
-        {/* Header */}
-        <View style={{ paddingTop: insets.top + 16, paddingHorizontal: 20, paddingBottom: 8, flexDirection: "row", alignItems: "center" }}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.white, alignItems: "center", justifyContent: "center", marginRight: 12 }}
+      <StatusBar style="light" />
+      <View style={{ flex: 1, backgroundColor: colors.primary }}>
+        {/* Teal Header - Unified with Business Signup */}
+        <View
+          style={{
+            paddingTop: insets.top + 12,
+            paddingHorizontal: 24,
+            paddingBottom: 28,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 18 }}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: "rgba(255,255,255,0.15)",
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: 12,
+              }}
+            >
+              <ChevronLeft size={22} color={colors.white} />
+            </TouchableOpacity>
+            <View
+              style={{
+                backgroundColor: "rgba(255,255,255,0.18)",
+                paddingHorizontal: 12,
+                paddingVertical: 5,
+                borderRadius: radius.pill,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <User size={13} color={colors.white} />
+              <Text
+                style={{
+                  fontSize: typography.size.xs,
+                  fontWeight: typography.weight.bold,
+                  color: colors.white,
+                  letterSpacing: 1.2,
+                }}
+              >
+                CUSTOMER ACCOUNT
+              </Text>
+            </View>
+          </View>
+
+          <Text
+            style={{
+              fontSize: typography.size["4xl"],
+              fontWeight: typography.weight.extrabold,
+              color: colors.white,
+              lineHeight: 34,
+              marginBottom: 6,
+            }}
           >
-            <ChevronLeft size={22} color={colors.text} />
-          </TouchableOpacity>
+            Join EasyBook
+          </Text>
+          <Text
+            style={{
+              fontSize: typography.size.md,
+              color: colors.whiteAlpha75,
+            }}
+          >
+            Create an account to get started
+          </Text>
         </View>
 
-        <Animated.ScrollView
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: paddingAnimation }}
+        {/* White Card Body */}
+        <Animated.View
+          style={{
+            flex: 1,
+            backgroundColor: colors.card,
+            borderTopLeftRadius: 32,
+            borderTopRightRadius: 32,
+            paddingHorizontal: 24,
+            paddingTop: 32,
+          }}
         >
-          {/* Title */}
-          <View style={{ marginBottom: 32, marginTop: 8 }}>
-            <Text style={{ fontSize: typography.size.body, color: colors.primary, fontWeight: typography.weight.semibold, marginBottom: 6, letterSpacing: 0.4 }}>
-              START FOR FREE
-            </Text>
-            <Text style={{ fontSize: typography.size['5xl'], fontWeight: typography.weight.extrabold, color: colors.text, lineHeight: 36 }}>
-              Create an{"\n"}account
-            </Text>
-            <Text style={{ fontSize: typography.size.md, color: colors.textTertiary, marginTop: 8 }}>
-              Fill in your details to get started
-            </Text>
-          </View>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: paddingAnimation }}
+          >
+            {error && (
+              <View style={{ backgroundColor: colors.errorBg, borderRadius: radius.md, padding: 12, marginBottom: 16 }}>
+                <Text style={{ color: colors.error, fontSize: typography.size.body }}>{error}</Text>
+              </View>
+            )}
 
-          {error && (
-            <View style={{ backgroundColor: colors.errorBg, borderRadius: 10, padding: 12, marginBottom: 16 }}>
-              <Text style={{ color: colors.error, fontSize: typography.size.body }}>{error}</Text>
-            </View>
-          )}
+            <InputField 
+              label="Full Name" 
+              icon={User} 
+              placeholder="Enter your full name" 
+              value={fullName} 
+              onChangeText={setFullName} 
+              variant="teal" 
+              onFocus={handleFocus} 
+              onBlur={handleBlur} 
+              error={fieldErrors.fullName} 
+            />
+            
+            <InputField 
+              label="Email Address" 
+              icon={Mail} 
+              placeholder="Enter your email" 
+              value={email} 
+              onChangeText={setEmail} 
+              keyboardType="email-address" 
+              variant="teal" 
+              onFocus={handleFocus} 
+              onBlur={handleBlur} 
+              error={fieldErrors.email} 
+            />
+            
+            <InputField 
+              label="Phone Number" 
+              icon={Phone} 
+              placeholder="024 123 4567" 
+              prefix={phonePrefix}
+              value={phone} 
+              onChangeText={handlePhoneChange} 
+              keyboardType="phone-pad" 
+              variant="teal" 
+              onFocus={handleFocus} 
+              onBlur={handleBlur} 
+              error={fieldErrors.phone} 
+            />
 
-          <InputField label="Full Name" icon={User} placeholder="Enter your full name" value={fullName} onChangeText={setFullName} variant="teal" onFocus={handleFocus} onBlur={handleBlur} error={fieldErrors.fullName} />
-          <InputField label="Email Address" icon={Mail} placeholder="Enter your email" value={email} onChangeText={setEmail} keyboardType="email-address" variant="teal" onFocus={handleFocus} onBlur={handleBlur} error={fieldErrors.email} />
-          <InputField label="Phone Number" icon={Phone} placeholder="Enter your phone number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" variant="teal" onFocus={handleFocus} onBlur={handleBlur} error={fieldErrors.phone} />
-          <InputField
-            label="Password" icon={Lock} placeholder="Create a password" value={password} onChangeText={setPassword}
-            secureTextEntry={!showPassword} variant="teal" onFocus={handleFocus} onBlur={handleBlur} error={fieldErrors.password}
-            right={
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                {showPassword ? <EyeOff size={18} color={colors.primary} /> : <Eye size={18} color={colors.primary} />}
+            <InputField
+              label="Password" 
+              icon={Lock} 
+              placeholder="Create a password" 
+              value={password} 
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword} 
+              variant="teal" 
+              onFocus={handleFocus} 
+              onBlur={handleBlur} 
+              error={fieldErrors.password}
+              right={
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  {showPassword ? <EyeOff size={18} color={colors.primary} /> : <Eye size={18} color={colors.primary} />}
+                </TouchableOpacity>
+              }
+            />
+
+            <Button 
+              title={loading ? "Creating account..." : "SIGN UP"} 
+              onPress={handleSignUp} 
+              loading={loading} 
+              disabled={loading} 
+              style={{ marginTop: 8, marginBottom: 24 }} 
+            />
+
+            {/* Sign In link */}
+            <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", marginBottom: 24 }}>
+              <Text style={{ fontSize: typography.size.md, color: colors.textTertiary }}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => router.push("/signin")}>
+                <Text style={{ fontSize: typography.size.md, color: colors.primary, fontWeight: typography.weight.bold }}>Sign In</Text>
               </TouchableOpacity>
-            }
-          />
+            </View>
 
-          <Button title={loading ? "Creating account..." : "SIGN UP"} onPress={handleSignUp} loading={loading} disabled={loading} style={{ marginTop: 8, marginBottom: 24 }} />
-
-          {/* Sign In link */}
-          <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", marginBottom: 12 }}>
-            <Text style={{ fontSize: typography.size.md, color: colors.textTertiary }}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => router.push("/signin")}>
-              <Text style={{ fontSize: typography.size.md, color: colors.primary, fontWeight: typography.weight.bold }}>Sign In</Text>
+            <TouchableOpacity 
+              onPress={() => router.push("/business/signup")} 
+              style={{ 
+                alignItems: "center", 
+                paddingVertical: 16,
+                borderTopWidth: 1,
+                borderTopColor: colors.divider,
+                marginTop: 8
+              }}
+            >
+              <Text style={{ fontSize: typography.size.body, color: colors.textTertiary }}>
+                Are you a business owner?{" "}
+                <Text style={{ color: colors.primary, fontWeight: typography.weight.bold }}>Sign Up</Text>
+              </Text>
             </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity style={{ alignItems: "center", paddingVertical: 8 }}>
-            <Text style={{ fontSize: typography.size.body, color: colors.textTertiary }}>
-              Are you a business owner?{" "}
-              <Text style={{ color: colors.primary, fontWeight: typography.weight.bold }}>Sign Up</Text>
-            </Text>
-          </TouchableOpacity>
-        </Animated.ScrollView>
+          </ScrollView>
+        </Animated.View>
       </View>
     </KeyboardAvoidingAnimatedView>
   );

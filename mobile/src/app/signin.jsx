@@ -10,7 +10,7 @@ import {
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { Eye, EyeOff, Mail, Lock } from "lucide-react-native";
+import { Eye, EyeOff, Mail, Lock, ChevronLeft, User, Briefcase, Check } from "lucide-react-native";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
 import InputField from "@/components/InputField";
 import Button from "@/components/Button";
@@ -42,7 +42,7 @@ export default function SignInScreen() {
   };
 
   const paddingAnimation = useRef(
-    new Animated.Value(insets.bottom + 16),
+    new Animated.Value(insets.bottom + 24),
   ).current;
 
   const animateTo = (value) => {
@@ -54,11 +54,11 @@ export default function SignInScreen() {
   };
 
   const handleFocus = () => {
-    if (Platform.OS !== "web") animateTo(16);
+    if (Platform.OS !== "web") animateTo(24);
   };
 
   const handleBlur = () => {
-    if (Platform.OS !== "web") animateTo(insets.bottom + 16);
+    if (Platform.OS !== "web") animateTo(insets.bottom + 24);
   };
 
   const handleLogin = async () => {
@@ -67,7 +67,6 @@ export default function SignInScreen() {
       return;
     }
 
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError("Please enter a valid email address.");
@@ -102,70 +101,104 @@ export default function SignInScreen() {
     <KeyboardAvoidingAnimatedView style={{ flex: 1 }} behavior="padding">
       <StatusBar style="light" />
       <View style={{ flex: 1, backgroundColor: colors.primary }}>
-        {/* Teal header */}
+        {/* Teal Header - Unified */}
         <View
           style={{
-            paddingTop: insets.top + 40,
-            paddingBottom: 40,
-            paddingHorizontal: 28,
+            paddingTop: insets.top + 12,
+            paddingHorizontal: 24,
+            paddingBottom: 28,
           }}
         >
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 18 }}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: "rgba(255,255,255,0.15)",
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: 12,
+              }}
+            >
+              <ChevronLeft size={22} color={colors.white} />
+            </TouchableOpacity>
+            <View
+              style={{
+                backgroundColor: "rgba(255,255,255,0.18)",
+                paddingHorizontal: 12,
+                paddingVertical: 5,
+                borderRadius: radius.pill,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Lock size={13} color={colors.white} />
+              <Text
+                style={{
+                  fontSize: typography.size.xs,
+                  fontWeight: typography.weight.bold,
+                  color: colors.white,
+                  letterSpacing: 1.2,
+                }}
+              >
+                SECURE LOGIN
+              </Text>
+            </View>
+          </View>
+
           <Text
             style={{
-              fontSize: typography.size['4xl'],
+              fontSize: typography.size["4xl"],
               fontWeight: typography.weight.extrabold,
               color: colors.white,
-              marginBottom: 4,
+              lineHeight: 34,
+              marginBottom: 6,
             }}
           >
             Welcome Back!
           </Text>
-          <Text style={{ fontSize: typography.size.md, color: colors.whiteAlpha75 }}>
-            Log in to continue
+          <Text
+            style={{
+              fontSize: typography.size.md,
+              color: colors.whiteAlpha75,
+            }}
+          >
+            Log in to continue your journey
           </Text>
         </View>
 
-        {/* White card body */}
+        {/* White Card Body */}
         <Animated.View
           style={{
             flex: 1,
             backgroundColor: colors.card,
             borderTopLeftRadius: 32,
             borderTopRightRadius: 32,
-            paddingHorizontal: 28,
-            paddingTop: 36,
-            paddingBottom: paddingAnimation,
+            paddingHorizontal: 24,
+            paddingTop: 32,
           }}
         >
           <ScrollView
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: paddingAnimation }}
           >
-            <Text
-              style={{
-                fontSize: typography.size['3xl'],
-                fontWeight: typography.weight.bold,
-                color: colors.text,
-                marginBottom: 28,
-              }}
-            >
-              Sign In
-            </Text>
-
             {error && (
               <View
                 style={{
                   backgroundColor: colors.errorBg,
                   borderRadius: radius.md,
                   padding: 12,
-                  marginBottom: 16,
+                  marginBottom: 20,
                 }}
               >
                 <Text style={{ color: colors.error, fontSize: typography.size.body }}>{error}</Text>
               </View>
             )}
 
-            {/* Email */}
             <InputField
               label="Email Address"
               icon={Mail}
@@ -173,11 +206,11 @@ export default function SignInScreen() {
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
+              variant="teal"
               onFocus={handleFocus}
               onBlur={handleBlur}
             />
 
-            {/* Password */}
             <InputField
               label="Password"
               icon={Lock}
@@ -185,14 +218,15 @@ export default function SignInScreen() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
+              variant="teal"
               onFocus={handleFocus}
               onBlur={handleBlur}
               right={
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                   {showPassword ? (
-                    <EyeOff size={18} color="#999" />
+                    <EyeOff size={18} color={colors.primary} />
                   ) : (
-                    <Eye size={18} color="#999" />
+                    <Eye size={18} color={colors.primary} />
                   )}
                 </TouchableOpacity>
               }
@@ -204,82 +238,103 @@ export default function SignInScreen() {
                 flexDirection: "row",
                 justifyContent: "space-between",
                 alignItems: "center",
-                marginBottom: 32,
+                marginBottom: 28,
+                marginTop: 4,
               }}
             >
               <TouchableOpacity
                 onPress={() => setRememberMe(!rememberMe)}
-                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                activeOpacity={0.7}
+                style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
               >
                 <View
                   style={{
-                    width: 20,
-                    height: 20,
+                    width: 22,
+                    height: 22,
                     borderRadius: 6,
                     borderWidth: 2,
-                    borderColor: rememberMe ? colors.primary : "#CCCCCC",
-                    backgroundColor: rememberMe ? colors.primary : "transparent",
+                    borderColor: rememberMe ? colors.primary : colors.border,
+                    backgroundColor: rememberMe ? colors.primary : colors.transparent,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  {rememberMe && (
-                    <Text style={{ color: colors.white, fontSize: 12, fontWeight: typography.weight.bold }}>
-                      ✓
-                    </Text>
-                  )}
+                  {rememberMe && <Check size={14} color={colors.white} strokeWidth={3} />}
                 </View>
-                <Text style={{ fontSize: typography.size.body, color: colors.textSecondary }}>Remember me</Text>
+                <Text style={{ fontSize: typography.size.md, color: colors.textSecondary, fontWeight: typography.weight.medium }}>
+                  Remember me
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={() => router.push("/forgot-password")}>
-                <Text style={{ fontSize: typography.size.body, color: colors.primary, fontWeight: typography.weight.semibold }}>
-                  Forgot Password?
+                <Text style={{ fontSize: typography.size.md, color: colors.primary, fontWeight: typography.weight.bold }}>
+                  Forgot?
                 </Text>
               </TouchableOpacity>
             </View>
 
-            {/* Login Button */}
             <Button
               title={loading ? "Logging in..." : "LOGIN"}
               onPress={handleLogin}
               loading={loading}
               disabled={loading}
-              style={{ marginBottom: 28 }}
+              style={{ marginBottom: 24 }}
             />
 
-            {/* Business owner toggle */}
+            {/* Business owner toggle - Premium style */}
             <TouchableOpacity
               onPress={() => setIsBusiness(!isBusiness)}
+              activeOpacity={0.8}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                justifyContent: "center",
-                marginTop: 16,
-                gap: 8,
+                backgroundColor: isBusiness ? colors.primarySurface : colors.background,
+                padding: 16,
+                borderRadius: radius.lg,
+                borderWidth: 1,
+                borderColor: isBusiness ? colors.primary : colors.border,
+                marginBottom: 24,
+                gap: 12,
               }}
             >
               <View
                 style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: 5,
-                  borderWidth: 2,
-                  borderColor: isBusiness ? colors.primary : "#CCC",
-                  backgroundColor: isBusiness ? colors.primary : "transparent",
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: isBusiness ? colors.primary : colors.white,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                {isBusiness && (
-                  <Text style={{ color: colors.white, fontSize: 11, fontWeight: typography.weight.extrabold }}>
-                    ✓
-                  </Text>
-                )}
+                <Briefcase size={16} color={isBusiness ? colors.white : colors.textTertiary} />
               </View>
-              <Text style={{ fontSize: typography.size.body, color: "#666" }}>
-                I'm a business owner
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ 
+                  fontSize: typography.size.md, 
+                  fontWeight: typography.weight.bold,
+                  color: isBusiness ? colors.primaryDark : colors.text 
+                }}>
+                  Business Owner
+                </Text>
+                <Text style={{ fontSize: typography.size.xs, color: colors.textTertiary }}>
+                  Toggle for business dashboard access
+                </Text>
+              </View>
+              <View
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  borderWidth: 2,
+                  borderColor: isBusiness ? colors.primary : colors.border,
+                  backgroundColor: isBusiness ? colors.primary : colors.transparent,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {isBusiness && <Check size={12} color={colors.white} strokeWidth={3} />}
+              </View>
             </TouchableOpacity>
 
             {/* Sign Up link */}
@@ -288,7 +343,7 @@ export default function SignInScreen() {
                 flexDirection: "row",
                 justifyContent: "center",
                 alignItems: "center",
-                marginTop: 14,
+                marginBottom: 20,
               }}
             >
               <Text style={{ fontSize: typography.size.md, color: colors.textTertiary }}>
