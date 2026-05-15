@@ -18,6 +18,7 @@ import authService from "@/services/auth";
 import { useAuthStore } from "@/utils/auth/store";
 import BusinessTabBar from "@/components/BusinessTabBar";
 import { supabase } from "@/utils/supabase";
+import { uploadImage } from "@/utils/storage";
 
 const PRIMARY = "#00A896";
 
@@ -79,11 +80,28 @@ export default function BusinessProfileScreen() {
     if (!result.canceled) {
       const uri = result.assets[0].uri;
       try {
-        const updated = await authService.updateProfile({ avatar_url: uri });
-        setUser(updated);
-        Alert.alert("Success", "Profile picture updated!");
+        setLoading(true);
+        const uploadedUrl = await uploadImage(uri, 'business-profiles');
+        
+        if (uploadedUrl && business?.id) {
+           const { data, error } = await supabase
+             .from('businesses')
+             .update({ image_url: uploadedUrl })
+             .eq('id', business.id)
+             .select()
+             .single();
+             
+           if (error) throw error;
+           setBusiness(data);
+           Alert.alert("Success", "Business profile picture updated!");
+        } else {
+           throw new Error("Upload failed or no business found");
+        }
       } catch (err) {
+        console.error(err);
         Alert.alert("Error", "Could not update picture");
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -145,7 +163,7 @@ export default function BusinessProfileScreen() {
 
           <View style={{ position: "relative", marginBottom: 14 }}>
             <View style={{ width: 96, height: 96, borderRadius: 48, borderWidth: 3, borderColor: PRIMARY, overflow: "hidden" }}>
-              <Image source={{ uri: user?.avatar_url || business?.image_url || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300" }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+              <Image source={{ uri: business?.image_url || user?.avatar_url || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300" }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
             </View>
             <TouchableOpacity onPress={handlePickImage} style={{ position: "absolute", bottom: 0, right: 0, width: 30, height: 30, borderRadius: 15, backgroundColor: PRIMARY, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#fff" }}>
               <Camera size={14} color="#fff" />

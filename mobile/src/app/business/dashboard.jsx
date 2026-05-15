@@ -370,6 +370,7 @@ export default function BusinessDashboardScreen() {
   const [activeFilter, setActiveFilter] = useState("Active");
   const [allBookings, setAllBookings] = useState([]);
   const [user, setUser] = useState(null);
+  const [businessData, setBusinessData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(
@@ -389,7 +390,7 @@ export default function BusinessDashboardScreen() {
       // 1. Fetch the business owned by this user
       const { data: business, error: bizError } = await supabase
         .from('businesses')
-        .select('id')
+        .select('id, image_url')
         .eq('owner_id', stored.id)
         .single();
 
@@ -398,6 +399,8 @@ export default function BusinessDashboardScreen() {
         setLoading(false);
         return;
       }
+      
+      setBusinessData(business);
 
       // 2. Map filters to database statuses
       // DB statuses: pending, confirmed, completed, cancelled
@@ -479,7 +482,7 @@ export default function BusinessDashboardScreen() {
           {/* Avatar (left) */}
           <Image
             source={{
-              uri: user?.avatar_url || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=100",
+              uri: businessData?.image_url || user?.avatar_url || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=100",
             }}
             style={{
               width: 44,
