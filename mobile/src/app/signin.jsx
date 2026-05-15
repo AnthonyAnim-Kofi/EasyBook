@@ -88,13 +88,12 @@ export default function SignInScreen() {
         await removeSavedEmail();
       }
 
-      // Check if business owner has a business
-      if (user.role === 'business_owner' || isBusiness) {
+      if (isBusiness) {
         if (!user.has_business) {
           await authService.signOut();
           Alert.alert(
             "Access Denied",
-            "You are not a business owner. Please register your business first.",
+            "You have not registered a business. Please sign up as a business first.",
             [{ text: "OK" }]
           );
           setLoading(false);
