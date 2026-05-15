@@ -123,7 +123,7 @@ const CreateAppWithFonts = () => {
 
 }
 LoadSkiaWeb({
-  locateFile: (file) => `/${file}`,
+  locateFile: () => '/canvaskit.wasm',
 }).then(async () => {
   renderRootComponent(CreateAppWithFonts)
 });
