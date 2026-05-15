@@ -25,7 +25,7 @@ mobile/.metro-health-check*
 mobile/.metro-virtual/
 mobile/.expo-router-check/
 mobile/caches/
-mobile/public/canvaskit.wasm
+
 mobile/.vitest/
 
 # General
