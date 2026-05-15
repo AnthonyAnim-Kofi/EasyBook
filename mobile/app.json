@@ -58,6 +58,7 @@
     ],
     "web": {
       "bundler": "metro",
+      "output": "single",
       "favicon": "./assets/images/easybooklogo.png"
     },
     "experiments": {
