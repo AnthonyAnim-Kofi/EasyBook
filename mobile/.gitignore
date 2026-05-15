@@ -42,5 +42,5 @@ app-example
 .metro-virtual/
 .expo-router-check/
 caches/
-public/canvaskit.wasm
+
 .vitest/
