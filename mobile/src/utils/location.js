@@ -23,7 +23,7 @@ export const getCurrentLocation = async () => {
       return {
         city,
         country,
-        fullAddress: address.formattedAddress || (country ? `${city}, ${country}` : city),
+        fullAddress: country ? `${city}, ${country}` : city,
       };
     }
 

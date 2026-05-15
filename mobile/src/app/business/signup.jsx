@@ -232,7 +232,9 @@ export default function BusinessSignUpScreen() {
 
       if (address && address[0]) {
         const addr = address[0];
-        const formatted = [addr.name, addr.street, addr.city, addr.region].filter(Boolean).join(', ');
+        const city = addr.city || addr.district || addr.region || addr.subregion;
+        const country = addr.country;
+        const formatted = [city, country].filter(Boolean).join(', ');
         setLocation(formatted);
       }
     } catch (err) {
