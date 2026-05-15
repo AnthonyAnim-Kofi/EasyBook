@@ -1,77 +1,82 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Search, MapPin, Star } from "lucide-react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import { businessService } from "@/services/business";
 
 const PRIMARY = "#00A896";
 const BG = "#F6F4F3";
 
-const categories = [
-  { id: "1", label: "All", active: true },
-  { id: "2", label: "Hair", active: false },
-  { id: "3", label: "Makeup", active: false },
-  { id: "4", label: "Nails", active: false },
-  { id: "5", label: "Spa", active: false },
-];
-
-const places = [
-  {
-    id: "1",
-    name: "Yanks Spa and Salon",
-    location: "Kwabenya, Accra",
-    rating: 4.5,
-    reviews: "1k+",
-    image: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600",
-  },
-  {
-    id: "2",
-    name: "Magnus Spa",
-    location: "Accra, Ghana",
-    rating: 4.8,
-    reviews: "820",
-    image: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=600",
-  },
-  {
-    id: "3",
-    name: "Elite Cuts Barber",
-    location: "Kumasi, Ghana",
-    rating: 4.7,
-    reviews: "340",
-    image: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=600",
-  },
-  {
-    id: "4",
-    name: "Luxe Beauty Studio",
-    location: "Accra, Ghana",
-    rating: 4.6,
-    reviews: "210",
-    image: "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=600",
-  },
+const categoryFilters = [
+  { id: "all", label: "All" },
+  { id: "salon", label: "Hair" },
+  { id: "beauty", label: "Makeup" },
+  { id: "nails", label: "Nails" },
+  { id: "spa", label: "Spa" },
 ];
 
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("All");
+  const [businesses, setBusinesses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredPlaces = activeTab === "All" 
-    ? places 
-    : places.filter(p => {
-        if (activeTab === "Hair") return p.name.toLowerCase().includes("barber") || p.name.toLowerCase().includes("salon");
-        if (activeTab === "Spa") return p.name.toLowerCase().includes("spa");
-        if (activeTab === "Makeup") return p.name.toLowerCase().includes("beauty");
-        if (activeTab === "Nails") return p.name.toLowerCase().includes("beauty") || p.name.toLowerCase().includes("salon");
+  useEffect(() => {
+    loadBusinesses();
+  }, []);
+
+  const loadBusinesses = async () => {
+    setLoading(true);
+    try {
+      const result = await businessService.list({ sort: 'rating', limit: 20 });
+      setBusinesses(result.businesses || []);
+    } catch (err) {
+      console.log("Error loading businesses:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredPlaces = businesses.filter(biz => {
+    // Search filter
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const matchesName = (biz.name || "").toLowerCase().includes(q);
+      const matchesAddress = (biz.address || "").toLowerCase().includes(q);
+      if (!matchesName && !matchesAddress) return false;
+    }
+
+    // Category filter
+    if (activeTab === "All") return true;
+    const category = (biz.category || "").toLowerCase();
+    const name = (biz.name || "").toLowerCase();
+    const tags = (biz.services_tags || []).map(t => t.toLowerCase());
+
+    switch (activeTab) {
+      case "Hair":
+        return category.includes("salon") || category.includes("barber") || category.includes("hair") || name.includes("salon") || name.includes("barber") || tags.some(t => t.includes("hair"));
+      case "Spa":
+        return category.includes("spa") || name.includes("spa") || tags.some(t => t.includes("spa"));
+      case "Makeup":
+        return category.includes("beauty") || category.includes("makeup") || name.includes("beauty") || tags.some(t => t.includes("makeup") || t.includes("beauty"));
+      case "Nails":
+        return category.includes("nail") || name.includes("nail") || tags.some(t => t.includes("nail"));
+      default:
         return true;
-      });
+    }
+  });
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
@@ -116,6 +121,8 @@ export default function ExploreScreen() {
           <TextInput
             placeholder="Search salons, services..."
             placeholderTextColor="#BBBBBB"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
             style={{
               flex: 1,
               paddingVertical: 13,
@@ -141,7 +148,7 @@ export default function ExploreScreen() {
             gap: 10,
           }}
         >
-          {categories.map((cat) => (
+          {categoryFilters.map((cat) => (
             <TouchableOpacity
               key={cat.id}
               onPress={() => setActiveTab(cat.label)}
@@ -168,7 +175,11 @@ export default function ExploreScreen() {
         </ScrollView>
 
         <View style={{ paddingHorizontal: 22 }}>
-          {filteredPlaces.length > 0 ? (
+          {loading ? (
+            <View style={{ alignItems: "center", paddingTop: 40 }}>
+              <ActivityIndicator size="large" color={PRIMARY} />
+            </View>
+          ) : filteredPlaces.length > 0 ? (
             filteredPlaces.map((place) => (
               <TouchableOpacity
                 key={place.id}
@@ -191,7 +202,7 @@ export default function ExploreScreen() {
                 }}
               >
                 <Image
-                  source={{ uri: place.image }}
+                  source={{ uri: place.image_url || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600" }}
                   style={{ width: "100%", height: 150 }}
                   contentFit="cover"
                 />
@@ -218,7 +229,7 @@ export default function ExploreScreen() {
                       <Text
                         style={{ fontSize: 12, color: "#888", marginLeft: 4 }}
                       >
-                        {place.location}
+                        {place.address || place.city || "No location"}
                       </Text>
                     </View>
                     <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -231,12 +242,12 @@ export default function ExploreScreen() {
                           marginLeft: 4,
                         }}
                       >
-                        {place.rating}
+                        {place.rating || "0.0"}
                       </Text>
                       <Text
                         style={{ fontSize: 12, color: "#AAA", marginLeft: 3 }}
                       >
-                        ({place.reviews})
+                        ({place.review_count || 0})
                       </Text>
                     </View>
                   </View>
@@ -245,7 +256,7 @@ export default function ExploreScreen() {
             ))
           ) : (
             <View style={{ alignItems: "center", paddingTop: 40 }}>
-              <Text style={{ color: "#AAA", fontSize: 15 }}>No places found in this category</Text>
+              <Text style={{ color: "#AAA", fontSize: 15 }}>No places found</Text>
             </View>
           )}
         </View>

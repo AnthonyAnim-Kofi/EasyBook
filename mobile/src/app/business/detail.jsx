@@ -9,6 +9,7 @@ import {
   Linking,
   Share,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -28,6 +29,7 @@ import {
 import { Image } from "expo-image";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { businessService } from "@/services/business";
+import { supabase } from "@/utils/supabase";
 import { colors, typography, radius, shadows } from "@/theme";
 
 const PRIMARY = colors.primary;
@@ -70,14 +72,34 @@ export default function BusinessDetailScreen() {
     setLoading(true);
     try {
       const data = await businessService.getDetail(id);
-      setBusiness(data.business);
+      setBusiness(data);
+      setSpecialists(data?.specialists || []);
       
-      const specData = await businessService.getSpecialists({ businessId: id });
-      setSpecialists(specData.specialists || []);
+      // Check if favorited
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: fav } = await supabase
+          .from('favourites')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('business_id', id)
+          .maybeSingle();
+        setLiked(!!fav);
+      }
     } catch (err) {
       console.log("Error loading business detail:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleFavourite = async () => {
+    try {
+      const { favourited } = await businessService.toggleFavourite(id);
+      setLiked(favourited);
+    } catch (err) {
+      console.log("Error toggling favourite:", err);
+      Alert.alert("Error", "Could not update favorites");
     }
   };
 
@@ -229,7 +251,7 @@ export default function BusinessDetailScreen() {
       case "Package":
         return (
           <View style={{ padding: 20 }}>
-            {packages.map((pkg) => (
+            {(biz.packages && biz.packages.length > 0 ? biz.packages : packages).map((pkg) => (
               <View
                 key={pkg.id}
                 style={{
@@ -269,7 +291,7 @@ export default function BusinessDetailScreen() {
                   </Text>
                 </View>
                 <Text style={{ fontSize: 13, color: "#888", marginBottom: 12 }}>
-                  {pkg.desc}
+                  {pkg.description || pkg.desc}
                 </Text>
                 <View
                   style={{
@@ -279,28 +301,29 @@ export default function BusinessDetailScreen() {
                   }}
                 >
                   <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <Clock size={13} color="#999" />
+                    <Clock size={14} color="#888" />
                     <Text
-                      style={{ fontSize: 12, color: "#888", marginLeft: 4 }}
+                      style={{ fontSize: 13, color: "#888", marginLeft: 6 }}
                     >
                       {pkg.duration}
                     </Text>
                   </View>
                   <TouchableOpacity
-                    onPress={() => 
+                    onPress={() =>
                       router.push({
                         pathname: "/booking/date",
                         params: {
                           salon: biz.name,
                           service: pkg.name,
+                          price: pkg.price,
                         },
                       })
                     }
                     style={{
                       backgroundColor: "#E0F5F3",
-                      borderRadius: 16,
+                      borderRadius: 20,
                       paddingHorizontal: 16,
-                      paddingVertical: 7,
+                      paddingVertical: 8,
                     }}
                   >
                     <Text
@@ -310,7 +333,7 @@ export default function BusinessDetailScreen() {
                         fontWeight: "700",
                       }}
                     >
-                      Select
+                      Book
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -473,18 +496,21 @@ export default function BusinessDetailScreen() {
               >
                 Working Hours
               </Text>
-              {[
-                { day: "Monday – Friday", hours: "8:00 AM – 7:00 PM" },
-                { day: "Saturday", hours: "9:00 AM – 6:00 PM" },
-                { day: "Sunday", hours: "10:00 AM – 4:00 PM" },
-              ].map((h, i) => (
+              {(biz.working_hours && Array.isArray(biz.working_hours) && biz.working_hours.length > 0 
+                ? biz.working_hours 
+                : [
+                  { day: "Monday – Friday", hours: "8:00 AM – 7:00 PM" },
+                  { day: "Saturday", hours: "9:00 AM – 6:00 PM" },
+                  { day: "Sunday", hours: "10:00 AM – 4:00 PM" },
+                ]
+              ).map((h, i, arr) => (
                 <View
                   key={i}
                   style={{
                     flexDirection: "row",
                     justifyContent: "space-between",
                     paddingVertical: 8,
-                    borderBottomWidth: i < 2 ? 1 : 0,
+                    borderBottomWidth: i < arr.length - 1 ? 1 : 0,
                     borderBottomColor: "#F5F5F5",
                   }}
                 >
@@ -635,7 +661,7 @@ export default function BusinessDetailScreen() {
                 <Share2 size={18} color="#fff" />
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => setLiked(!liked)}
+                onPress={toggleFavourite}
                 style={{
                   width: 40,
                   height: 40,

@@ -350,7 +350,11 @@ export default function BusinessSignUpScreen() {
           owner_id: user.id,
           name: bizName,
           phone: numericPhone, // Added numeric phone
-          city: location.split(',').pop()?.trim() || "Takoradi", 
+          city: (() => {
+            const parts = location.split(',');
+            if (parts.length > 1) return parts[parts.length - 2].trim();
+            return parts[0].trim();
+          })() || "Takoradi", 
           address: location,
           category: finalCategories[0] || "General",
           services_tags: finalCategories,

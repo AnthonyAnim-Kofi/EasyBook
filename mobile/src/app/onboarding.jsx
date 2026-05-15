@@ -20,21 +20,21 @@ const LOGO =
 
 const slides = [
   {
-    id: "1",
+    id: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
     title: "Discover Beauty\nServices Near You!",
     subtitle:
       "Find top-rated salons, barbers, and spas\nin your neighborhood, all in one place.",
     image: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800",
   },
   {
-    id: "2",
+    id: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6e",
     title: "Book Anytime,\nAnywhere.",
     subtitle:
       "Schedule your appointments in seconds —\nno calls, no waiting, just easy booking.",
     image: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=800",
   },
   {
-    id: "3",
+    id: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6f",
     title: "Rate & Get\nRewarded.",
     subtitle:
       "Share your experience and earn rewards\nevery time you complete a booking.",

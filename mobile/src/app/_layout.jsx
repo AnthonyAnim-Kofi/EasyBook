@@ -3,7 +3,7 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { Alert } from "react-native";
+import { Alert, Platform } from "react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 SplashScreen.preventAutoHideAsync();
 
@@ -32,18 +32,14 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
       
       const currentPath = segments.join('/');
-      const isPublicGroup = [
-        "signin", "signup", "onboarding", "forgot-password", "reset-password", "business/signup"
-      ].some(path => currentPath === path || segments[0] === path);
-
-      const isPublicOnly = [
-        "signin", "signup", "onboarding"
-      ].some(path => currentPath === path || segments[0] === path);
-
+      const publicRoutes = ["signin", "signup", "onboarding", "forgot-password", "reset-password", "business/signup"];
+      
+      const isPublicRoute = publicRoutes.includes(currentPath) || publicRoutes.includes(segments[0]);
       const inAuthGroup = segments[0] === "(tabs)" || segments[0] === "business";
 
       if (!auth) {
-        if (!isPublicGroup && currentPath !== "" && currentPath !== "index") {
+        // If not authenticated and not on a public route, go to onboarding
+        if (!isPublicRoute && currentPath !== "" && currentPath !== "index") {
           router.replace("/onboarding");
         }
       } else {
@@ -52,19 +48,30 @@ export default function RootLayout() {
         const targetDashboard = appMode === 'business' ? "/business/dashboard" : "/(tabs)/home";
 
         // 1. If on a "public only" page, redirect to correct dashboard
-        if (isPublicOnly) {
+        const publicOnlyRoutes = ["signin", "signup", "onboarding"];
+        if (publicOnlyRoutes.includes(currentPath) || publicOnlyRoutes.includes(segments[0])) {
           router.replace(targetDashboard);
         }
         // 2. If at root, redirect
         else if (segments.length === 0 || segments[0] === "index") {
           router.replace(targetDashboard);
         }
-        // 3. Safety check for business owners
-        if (role === 'business_owner' && !user.has_business && inAuthGroup && appMode === 'business' && currentPath !== "business/signup") {
-           import('@/services/auth').then(({ authService }) => {
-              authService.signOut();
-              Alert.alert("Access Denied", "You are not a business owner. Please register your business first.");
-           });
+        
+        // 3. Safety check for business owners trying to access business side without a business record
+        if (appMode === 'business' && inAuthGroup && currentPath !== "business/signup") {
+           // If they are not a business owner or don't have a business, kick them out
+           if (role !== 'business_owner' || user.has_business === false) {
+              import('@/services/auth').then(({ authService }) => {
+                 authService.signOut();
+                 const msg = "Access Denied: You are not a business owner. Please register your business first.";
+                 if (Platform.OS === 'web') {
+                    window.alert(msg);
+                 } else {
+                    Alert.alert("Access Denied", msg);
+                 }
+                 router.replace("/signin");
+              });
+           }
         }
       }
     }

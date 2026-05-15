@@ -17,7 +17,7 @@ import {
   Calendar,
 } from "lucide-react-native";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { useRouter, router } from "expo-router";
 import { supabase } from "@/utils/supabase";
 import { colors, typography, radius, shadows } from "@/theme";
 import { format } from "date-fns";

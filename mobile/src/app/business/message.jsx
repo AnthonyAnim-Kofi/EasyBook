@@ -178,16 +178,17 @@ export default function BusinessMessageScreen() {
       const fileName = `${Date.now()}.${ext}`;
       const path = `${type}s/${fileName}`;
 
-      const formData = new FormData();
-      formData.append('file', {
-        uri,
-        name: fileName,
-        type: type === 'image' ? `image/${ext}` : `audio/${ext}`,
-      });
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const contentType = type === 'image' ? `image/${ext}` : `audio/${ext}`;
 
       const { data, error } = await supabase.storage
         .from('chat-media')
-        .upload(path, formData);
+        .upload(path, blob, {
+          contentType,
+          cacheControl: '3600',
+          upsert: false
+        });
 
       if (error) throw error;
 

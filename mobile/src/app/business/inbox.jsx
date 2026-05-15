@@ -33,18 +33,48 @@ export default function BusinessInboxScreen() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    fetchConversations();
-    
-    // Subscribe to messages to update list in real-time
-    const channel = supabase
-      .channel('inbox-updates')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
-        fetchConversations();
-      })
-      .subscribe();
+    let channel;
+    let cancelled = false;
 
-    return () => supabase.removeChannel(channel);
+    const setupSubscription = async () => {
+      await fetchConversations();
+      
+      if (cancelled) return;
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+
+        const channelName = `business-inbox-${user.id}-${Date.now()}`;
+        channel = supabase
+          .channel(channelName)
+          .on(
+            'postgres_changes', 
+            { 
+              event: 'INSERT', 
+              schema: 'public', 
+              table: 'messages',
+            }, 
+            () => {
+              if (!cancelled) fetchConversations();
+            }
+          )
+          .subscribe();
+      } catch (err) {
+        console.warn('Realtime subscription setup failed:', err);
+      }
+    };
+
+    setupSubscription();
+
+    return () => {
+      cancelled = true;
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
   }, []);
+
 
   const fetchConversations = async () => {
     try {

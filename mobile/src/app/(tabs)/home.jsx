@@ -58,11 +58,7 @@ export default function HomeScreen() {
   const [nearbySalons, setNearbySalons] = useState([]);
   const [suggestedSearches, setSuggestedSearches] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);
-  const [promotions, setPromotions] = useState([
-    { id: "1", bizId: "1", title: "50% off Haircuts", desc: "at Yanks Spa and Salon", image: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800", color: "#00A896" },
-    { id: "2", bizId: "2", title: "Free Facial with Spa", desc: "at Luxury Glow", image: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800", color: "#FF6B6B" },
-    { id: "3", bizId: "3", title: "20% Weekend Special", desc: "at Barber Shop", image: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800", color: "#4D96FF" },
-  ]);
+  const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [filters, setFilters] = useState({ city: "", rating: 0 });
@@ -115,15 +111,40 @@ export default function HomeScreen() {
       setSpecialists(specData.specialists || []);
 
       // Load nearby salons in user's city
-      const bizData = await businessService.list({ 
+      let bizData = await businessService.list({ 
         city: userCity || null,
         sort: 'rating', 
         limit: 10 
       });
-      setNearbySalons(bizData.businesses || []);
+      
+      let loadedBiz = bizData.businesses || [];
+      
+      // Fallback: If no salons found in city, load top rated salons generally
+      if (loadedBiz.length === 0) {
+        console.log(`No salons found in ${userCity}, loading general top rated salons.`);
+        bizData = await businessService.list({ 
+          sort: 'rating', 
+          limit: 10 
+        });
+        loadedBiz = bizData.businesses || [];
+      }
+      
+      setNearbySalons(loadedBiz);
+
+      // Build promotions from real business data
+      const promoColors = ["#00A896", "#FF6B6B", "#4D96FF", "#8B5CF6"];
+      const promoTitles = ["Featured Deal", "Special Offer", "Weekend Special", "Top Rated"];
+      setPromotions(loadedBiz.slice(0, 3).map((biz, i) => ({
+        id: biz.id,
+        bizId: biz.id,
+        title: promoTitles[i] || "Visit Today",
+        desc: `at ${biz.name}`,
+        image: biz.image_url || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800",
+        color: promoColors[i] || "#00A896",
+      })));
 
       // Build suggested searches from business names and categories
-      const bizNames = (bizData.businesses || []).map(b => b.name);
+      const bizNames = loadedBiz.map(b => b.name);
       const catNames = (catData.categories || []).map(c => c.name);
       setSuggestedSearches([...new Set([...bizNames, ...catNames])]);
     } catch (err) {
@@ -401,7 +422,10 @@ export default function HomeScreen() {
           </ScrollView>
 
           {/* Nearby Salon */}
-          <SectionHeader title="Nearby Salon" onAction={() => {}} />
+          <SectionHeader 
+            title={nearbySalons.length > 0 && location !== "Locating..." ? `Salons in ${location.split(',')[0]}` : "Top Rated Salons"} 
+            onAction={() => router.push("/(tabs)/explore")} 
+          />
           {nearbySalons.map((salon) => (
             <SalonCard
               key={salon.id}

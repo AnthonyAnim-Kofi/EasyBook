@@ -17,9 +17,9 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import authService from "@/services/auth";
 import KeyboardAvoidingAnimatedView from "@/components/KeyboardAvoidingAnimatedView";
+import { uploadImage } from "@/utils/storage";
 
 const PRIMARY = "#00A896";
-
 const Field = ({
   label,
   value,
@@ -73,13 +73,14 @@ export default function EditProfileScreen() {
   const [password, setPassword] = useState("••••••••");
   const [avatar, setAvatar] = useState(null);
   const [userRole, setUserRole] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadUser();
   }, []);
 
   const loadUser = async () => {
-    const user = await authService.getStoredUser();
+    const user = await authService.getMe(); // Use getMe for fresh data
     if (user) {
       setFullName(user.full_name || "");
       setEmail(user.email || "");
@@ -104,17 +105,22 @@ export default function EditProfileScreen() {
 
   const handleSave = async () => {
     try {
+      setLoading(true);
+      const uploadedAvatar = await uploadImage(avatar, 'avatars');
+      
       await authService.updateProfile({
         full_name: fullName,
         email,
         username,
-        avatar_url: avatar,
+        avatar_url: uploadedAvatar || avatar,
       });
-      // Use replace to force a fresh load of the profile screen
+      
       router.replace("/(tabs)/profile");
     } catch (error) {
       console.error("Save error:", error);
       Alert.alert("Error", "Could not save profile");
+    } finally {
+      setLoading(false);
     }
   };
 

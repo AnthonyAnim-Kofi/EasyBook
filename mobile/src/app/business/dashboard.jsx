@@ -418,7 +418,7 @@ export default function BusinessDashboardScreen() {
         `)
         .eq('business_id', business.id)
         .eq('status', statusFilter)
-        .order('booking_date', { ascending: true });
+        .order('date', { ascending: true });
 
       if (bError) throw bError;
 
@@ -429,8 +429,8 @@ export default function BusinessDashboardScreen() {
         charge: `GH₵ ${b.total_price || 0}`,
         specialist: "Owner", // Default for now
         services: b.package?.name ? [b.package.name] : ["General Service"],
-        date: format(new Date(b.booking_date), "dd MMM yyyy"),
-        time: b.booking_time,
+        date: format(new Date(b.date), "dd MMM yyyy"),
+        time: b.time,
         status: b.status === 'confirmed' ? 'active' : b.status === 'pending' ? 'request' : b.status
       }));
 

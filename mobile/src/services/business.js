@@ -10,7 +10,8 @@ export const businessService = {
       q = q.ilike('name', `%${query}%`);
     }
     if (city) {
-      q = q.eq('city', city);
+      // Use ilike with wildcards to handle "City, Country" or minor variations
+      q = q.ilike('city', `%${city}%`);
     }
     if (category) {
       // In Supabase, we might filter by services_tags containing the category
@@ -93,7 +94,7 @@ export const businessService = {
       .select('*')
       .eq('user_id', user.id)
       .eq('business_id', businessId)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       await supabase

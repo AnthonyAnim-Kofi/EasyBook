@@ -42,8 +42,8 @@ export default function ChatScreen() {
         .from('messages')
         .select(`
           *,
-          sender:profiles!messages_sender_id_fkey(id, username, business_name, business_image_url),
-          receiver:profiles!messages_receiver_id_fkey(id, username, business_name, business_image_url)
+          sender:profiles!messages_sender_id_fkey(id, username, business_name, avatar_url),
+          receiver:profiles!messages_receiver_id_fkey(id, username, business_name, avatar_url)
         `)
         .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
@@ -61,7 +61,7 @@ export default function ChatScreen() {
             lastMsg: msg.text || (msg.media_type ? `Sent an ${msg.media_type}` : ''),
             time: format(new Date(msg.created_at), 'p'),
             unread: msg.receiver_id === user.id && !msg.is_read ? 1 : 0,
-            image: partner.business_image_url || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=200",
+            image: partner.avatar_url || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=200",
             rawTime: new Date(msg.created_at)
           };
         } else if (msg.receiver_id === user.id && !msg.is_read) {

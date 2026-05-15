@@ -17,6 +17,7 @@ import * as ImagePicker from "expo-image-picker";
 import authService from "@/services/auth";
 import { useAuthStore } from "@/utils/auth/store";
 import BusinessTabBar from "@/components/BusinessTabBar";
+import { supabase } from "@/utils/supabase";
 
 const PRIMARY = "#00A896";
 
@@ -25,16 +26,31 @@ export default function BusinessProfileScreen() {
   const router = useRouter();
   
   const [user, setUser] = useState(null);
+  const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadUser = async () => {
+  const loadData = async () => {
     setRefreshing(true);
     try {
+      // Load user profile
       const stored = await authService.getStoredUser();
       setUser(stored);
+
+      // Load business data from the businesses table
+      if (stored?.id) {
+        const { data: bizData, error } = await supabase
+          .from('businesses')
+          .select('*')
+          .eq('owner_id', stored.id)
+          .single();
+
+        if (!error && bizData) {
+          setBusiness(bizData);
+        }
+      }
     } catch (err) {
-      console.error("Error loading user:", err);
+      console.error("Error loading data:", err);
     } finally {
       setRefreshing(false);
     }
@@ -42,13 +58,13 @@ export default function BusinessProfileScreen() {
 
   // Load once on mount
   useEffect(() => {
-    loadUser();
+    loadData();
   }, []);
 
   // Reload when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      loadUser();
+      loadData();
     }, [])
   );
 
@@ -73,15 +89,24 @@ export default function BusinessProfileScreen() {
   };
 
   const handleSaveChanges = async () => {
+    if (!business?.id) {
+      Alert.alert("Error", "No business found to update.");
+      return;
+    }
     setLoading(true);
     try {
-      const updated = await authService.updateProfile({
-        business_about: user?.business_about,
-        promotions: user?.promotions,
-      });
-      setUser(updated);
+      const { data, error } = await supabase
+        .from('businesses')
+        .update({ description: business.description })
+        .eq('id', business.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      setBusiness(data);
       Alert.alert("Success", "Profile updated successfully!");
     } catch (error) {
+      console.error("Save error:", error);
       Alert.alert("Error", "Could not save changes");
     } finally {
       setLoading(false);
@@ -89,12 +114,7 @@ export default function BusinessProfileScreen() {
   };
 
   const updateAbout = (text) => {
-    setUser(prev => ({ ...prev, business_about: text }));
-  };
-
-  const removePromo = async (id) => {
-    const newPromos = (user?.promotions || []).filter(p => p.id !== id);
-    setUser(prev => ({ ...prev, promotions: newPromos }));
+    setBusiness(prev => ({ ...prev, description: text }));
   };
 
   if (!user && refreshing) {
@@ -118,14 +138,14 @@ export default function BusinessProfileScreen() {
         {/* Profile header */}
         <View style={{ alignItems: "center", paddingHorizontal: 22, paddingTop: 20, paddingBottom: 24, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#F0F0F0" }}>
           <View style={{ width: "100%", flexDirection: "row", justifyContent: "flex-end", position: "absolute", top: 10, right: 10 }}>
-             <TouchableOpacity onPress={loadUser} style={{ padding: 10 }}>
+             <TouchableOpacity onPress={loadData} style={{ padding: 10 }}>
                 <RefreshCw size={18} color={refreshing ? "#CCC" : PRIMARY} />
              </TouchableOpacity>
           </View>
 
           <View style={{ position: "relative", marginBottom: 14 }}>
             <View style={{ width: 96, height: 96, borderRadius: 48, borderWidth: 3, borderColor: PRIMARY, overflow: "hidden" }}>
-              <Image source={{ uri: user?.avatar_url || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300" }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+              <Image source={{ uri: user?.avatar_url || business?.image_url || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300" }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
             </View>
             <TouchableOpacity onPress={handlePickImage} style={{ position: "absolute", bottom: 0, right: 0, width: 30, height: 30, borderRadius: 15, backgroundColor: PRIMARY, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#fff" }}>
               <Camera size={14} color="#fff" />
@@ -133,12 +153,12 @@ export default function BusinessProfileScreen() {
           </View>
 
           <Text style={{ fontSize: 22, fontWeight: "800", color: "#1A1A1A", marginBottom: 4 }}>
-            {user?.business_name || "Your Business"}
+            {business?.name || user?.business_name || "Your Business"}
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 18 }}>
             <MapPin size={14} color="#888" />
             <Text style={{ fontSize: 13, color: "#888", marginLeft: 4 }}>
-              {user?.business_location || "Location not set"}
+              {business?.address || user?.business_location || "Location not set"}
             </Text>
           </View>
 
@@ -150,32 +170,12 @@ export default function BusinessProfileScreen() {
         <View style={{ paddingHorizontal: 22, paddingTop: 24 }}>
           <Text style={{ fontSize: 16, fontWeight: "700", color: "#1A1A1A", marginBottom: 10 }}>About My Shop</Text>
           <TextInput
-            value={user?.business_about || ""}
+            value={business?.description || ""}
             onChangeText={updateAbout}
             multiline
             placeholder="Tell users about your business..."
             style={{ backgroundColor: "#fff", borderRadius: 16, padding: 16, fontSize: 14, color: "#555", lineHeight: 22, minHeight: 110, textAlignVertical: "top", borderWidth: 1.5, borderColor: "#EEEEEE", marginBottom: 28 }}
           />
-
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#1A1A1A" }}>Promotions & Offers</Text>
-            <TouchableOpacity onPress={() => router.push("/business/edit")} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: PRIMARY, alignItems: "center", justifyContent: "center" }}>
-              <Plus size={16} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          {(user?.promotions || []).map((promo) => (
-            <View key={promo.id} style={{ backgroundColor: "#fff", borderRadius: 16, padding: 16, marginBottom: 10, flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: "#EEEEEE" }}>
-              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: PRIMARY, marginRight: 12 }} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: "700", color: "#1A1A1A" }}>{promo.title}</Text>
-                <Text style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{promo.desc}</Text>
-              </View>
-              <TouchableOpacity onPress={() => removePromo(promo.id)} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: "#FFE5E5", alignItems: "center", justifyContent: "center" }}>
-                <X size={13} color="#D63031" />
-              </TouchableOpacity>
-            </View>
-          ))}
 
           <TouchableOpacity
             onPress={handleSaveChanges}
