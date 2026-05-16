@@ -50,16 +50,68 @@ export default function BusinessMessageScreen() {
   const scrollRef = useRef(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setCurrentUser(data.user);
-      fetchMessages(data.user);
-      const cleanup = subscribeToMessages(data.user);
-      return () => {
-        if (cleanup && typeof cleanup === 'function') cleanup();
-        else if (cleanup instanceof Promise) cleanup.then(unsub => unsub?.());
-      };
-    });
-  }, []);
+    let channel = null;
+
+    const setup = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        setCurrentUser(data.user);
+        fetchMessages(data.user);
+        
+        // Setup subscription
+        const channelName = `chat-${data.user.id}-${partnerId}`;
+        channel = supabase
+          .channel(channelName)
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'messages',
+              filter: `receiver_id=eq.${data.user.id}`
+            },
+            (payload) => {
+              const newMsg = payload.new;
+              if (newMsg.sender_id === partnerId) {
+                setMessages(prev => {
+                  if (prev.some(m => m.id === newMsg.id)) return prev;
+                  return [...prev, newMsg];
+                });
+                setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+              }
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'messages',
+              filter: `sender_id=eq.${data.user.id}`
+            },
+            (payload) => {
+              const newMsg = payload.new;
+              if (newMsg.receiver_id === partnerId) {
+                setMessages(prev => {
+                  if (prev.some(m => m.id === newMsg.id)) return prev;
+                  return [...prev, newMsg];
+                });
+                setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+              }
+            }
+          )
+          .subscribe();
+      }
+    };
+
+    setup();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [partnerId]);
 
   const fetchMessages = async (user) => {
     try {
@@ -80,58 +132,6 @@ export default function BusinessMessageScreen() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const subscribeToMessages = async (user) => {
-    if (!user) return;
-
-    // Use a unique channel name for this specific chat
-    const channelName = `chat-${user.id}-${partnerId}`;
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `receiver_id=eq.${user.id}`
-        },
-        (payload) => {
-          const newMsg = payload.new;
-          if (newMsg.sender_id === partnerId) {
-            setMessages(prev => {
-              if (prev.some(m => m.id === newMsg.id)) return prev;
-              return [...prev, newMsg];
-            });
-            setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `sender_id=eq.${user.id}`
-        },
-        (payload) => {
-          const newMsg = payload.new;
-          if (newMsg.receiver_id === partnerId) {
-            setMessages(prev => {
-              if (prev.some(m => m.id === newMsg.id)) return prev;
-              return [...prev, newMsg];
-            });
-            setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   };
 
   const sendMessage = async (text = null) => {
@@ -278,8 +278,8 @@ export default function BusinessMessageScreen() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.background }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={0}
     >
       <StatusBar style="dark" />
 

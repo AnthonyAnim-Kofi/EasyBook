@@ -25,6 +25,19 @@ export default function ChatScreen() {
 
   useEffect(() => {
     fetchChats();
+    
+    const channel = supabase
+      .channel('chat-list-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        () => fetchChats()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchChats = async () => {
