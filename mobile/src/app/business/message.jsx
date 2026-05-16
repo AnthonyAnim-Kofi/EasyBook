@@ -147,8 +147,20 @@ export default function BusinessMessageScreen() {
     return () => {
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
+      if (markReadTimerRef.current) clearTimeout(markReadTimerRef.current);
+      if (receiptHideTimerRef.current) clearTimeout(receiptHideTimerRef.current);
     };
   }, [partnerId]);
+
+  // Sorted view of messages — handles slightly out-of-order realtime arrivals
+  const sortedMessages = [...messages].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
+  // Unread = messages from partner to me that aren't yet marked read
+  const unreadCount = messages.filter(
+    (m) => !m.isMe && !m.is_read && String(m.receiver_id) === String(currentUser?.id)
+  ).length;
 
 
   const fetchMessages = async (user) => {
