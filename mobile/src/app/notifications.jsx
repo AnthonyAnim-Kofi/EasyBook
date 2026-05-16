@@ -201,7 +201,13 @@ export default function NotificationsScreen() {
                     {format(new Date(item.created_at), 'MMM d')}
                   </Text>
                 </View>
-                <Text style={{ fontSize: typography.size.sm, color: colors.textSecondary, lineHeight: 20 }}>{item.message}</Text>
+                <Text
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                  style={{ fontSize: typography.size.sm, color: colors.textSecondary, lineHeight: 20 }}
+                >
+                  {item.message}
+                </Text>
               </View>
             </TouchableOpacity>
           ))
