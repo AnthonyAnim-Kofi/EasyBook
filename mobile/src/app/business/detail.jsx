@@ -111,7 +111,11 @@ export default function BusinessDetailScreen() {
         Linking.openURL(`tel:${biz.phone || "+233244123456"}`);
         break;
       case "Website":
-        Linking.openURL(biz.website || "https://easybook.com");
+        let webUrl = biz.website || "https://easybook.com";
+        if (!webUrl.startsWith("http://") && !webUrl.startsWith("https://")) {
+          webUrl = `https://${webUrl}`;
+        }
+        Linking.openURL(webUrl);
         break;
       case "Direction":
         const addr = encodeURIComponent(biz.address || "Kwabenya, Accra");
