@@ -518,10 +518,10 @@ export default function BusinessMessageScreen() {
             scrollRef.current?.scrollToEnd({ animated: true })
           }
         >
-          {messages.map((msg, index) => {
+          {sortedMessages.map((msg, index) => {
             const isMe = msg.isMe ?? (String(msg.sender_id) === String(currentUser?.id));
-            const prev = messages[index - 1];
-            const next = messages[index + 1];
+            const prev = sortedMessages[index - 1];
+            const next = sortedMessages[index + 1];
             const curTime = new Date(msg.created_at).getTime();
 
             const showDateHeader =
