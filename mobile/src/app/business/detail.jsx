@@ -108,7 +108,11 @@ export default function BusinessDetailScreen() {
     
     switch (type) {
       case "Call":
-        Linking.openURL(`tel:${biz.phone || "+233244123456"}`);
+        if (biz.phone) {
+          Linking.openURL(`tel:${biz.phone}`);
+        } else {
+          Alert.alert("Notice", "This business hasn't provided a phone number.");
+        }
         break;
       case "Website":
         let webUrl = biz.website || "https://easybook.com";
@@ -128,7 +132,15 @@ export default function BusinessDetailScreen() {
         });
         break;
       case "Message":
-        router.push({ pathname: "/business/message", params: { id: biz.owner_id, name: biz.name } });
+        router.push({ 
+          pathname: "/business/message", 
+          params: { 
+            id: biz.owner_id, 
+            name: biz.name,
+            phone: biz.phone,
+            avatar: biz.image_url
+          } 
+        });
         break;
     }
   };
@@ -664,6 +676,19 @@ export default function BusinessDetailScreen() {
               <ArrowLeft size={20} color="#fff" />
             </TouchableOpacity>
             <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => handleAction("Call")}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: "rgba(0,0,0,0.35)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Phone size={18} color="#fff" />
+              </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => handleAction("Share")}
                 style={{

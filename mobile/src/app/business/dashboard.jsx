@@ -371,7 +371,7 @@ export default function BusinessDashboardScreen() {
   const [allBookings, setAllBookings] = useState([]);
   const [user, setUser] = useState(null);
   const [businessData, setBusinessData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [pendingCount, setPendingCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -402,11 +402,19 @@ export default function BusinessDashboardScreen() {
       
       setBusinessData(business);
 
-      // 2. Map filters to database statuses
-      // DB statuses: pending, confirmed, completed, cancelled
+      // 2. Fetch Pending Count for Notifications
+      const { count, error: countError } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .eq('business_id', business.id)
+        .eq('status', 'pending');
+      
+      if (!countError) setPendingCount(count || 0);
+
+      // 3. Map filters to database statuses
       let statusFilter = 'confirmed';
       if (activeFilter === 'Active') statusFilter = 'confirmed';
-      if (activeFilter === 'Upcoming') statusFilter = 'confirmed'; // Could be future confirmed
+      if (activeFilter === 'Upcoming') statusFilter = 'confirmed';
       if (activeFilter === 'Request') statusFilter = 'pending';
 
       const { data: bookingsData, error: bError } = await supabase
@@ -430,7 +438,7 @@ export default function BusinessDashboardScreen() {
         customer: b.profiles?.full_name || "Guest",
         avatar: b.profiles?.avatar_url || "https://ui-avatars.com/api/?name=" + (b.profiles?.full_name || "G"),
         charge: `GH₵ ${b.total_price || 0}`,
-        specialist: "Owner", // Default for now
+        specialist: "Owner",
         services: b.package?.name ? [b.package.name] : ["General Service"],
         date: format(new Date(b.date), "dd MMM yyyy"),
         time: b.time,
@@ -506,7 +514,12 @@ export default function BusinessDashboardScreen() {
           </View>
           {/* Bell */}
           <TouchableOpacity
-            onPress={() => Alert.alert("Notifications", "You have no new notifications.")}
+            onPress={() => Alert.alert(
+              "Notifications", 
+              pendingCount > 0 
+                ? `You have ${pendingCount} new booking request${pendingCount > 1 ? 's' : ''} waiting for approval.` 
+                : "You have no new notifications."
+            )}
             style={{
               position: "relative",
               width: 40,
@@ -518,19 +531,26 @@ export default function BusinessDashboardScreen() {
             }}
           >
             <Bell size={20} color="#1A1A1A" />
-            <View
-              style={{
-                position: "absolute",
-                top: 6,
-                right: 6,
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: "#FF6B6B",
-                borderWidth: 1.5,
-                borderColor: "#fff",
-              }}
-            />
+            {pendingCount > 0 && (
+              <View
+                style={{
+                  position: "absolute",
+                  top: 4,
+                  right: 4,
+                  minWidth: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  backgroundColor: "#FF6B6B",
+                  borderWidth: 1.5,
+                  borderColor: "#fff",
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 2
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 8, fontWeight: '800' }}>{pendingCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>

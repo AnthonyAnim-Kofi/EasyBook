@@ -49,7 +49,11 @@ export default function BusinessMessageScreen() {
 
   useEffect(() => {
     fetchMessages();
-    subscribeToMessages();
+    const cleanup = subscribeToMessages();
+    return () => {
+      if (cleanup && typeof cleanup === 'function') cleanup();
+      else if (cleanup instanceof Promise) cleanup.then(unsub => unsub?.());
+    };
   }, []);
 
   const fetchMessages = async () => {
@@ -78,20 +82,45 @@ export default function BusinessMessageScreen() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // Use a unique channel name for this specific chat
+    const channelName = `chat-${user.id}-${partnerId}`;
     const channel = supabase
-      .channel('schema-db-changes')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
+          filter: `receiver_id=eq.${user.id}`
         },
         (payload) => {
           const newMsg = payload.new;
-          if ((newMsg.sender_id === user.id && newMsg.receiver_id === partnerId) ||
-              (newMsg.sender_id === partnerId && newMsg.receiver_id === user.id)) {
-            setMessages(prev => [...prev, newMsg]);
+          if (newMsg.sender_id === partnerId) {
+            setMessages(prev => {
+              // Avoid duplicates
+              if (prev.some(m => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+            });
+            setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `sender_id=eq.${user.id}`
+        },
+        (payload) => {
+          const newMsg = payload.new;
+          if (newMsg.receiver_id === partnerId) {
+            setMessages(prev => {
+              if (prev.some(m => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+            });
             setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
           }
         }
@@ -298,7 +327,10 @@ export default function BusinessMessageScreen() {
           </View>
         </View>
         <TouchableOpacity
-          onPress={() => Linking.openURL('tel:+233200000000')}
+          onPress={() => {
+            const phone = params.phone || '+233244123456';
+            Linking.openURL(`tel:${phone}`);
+          }}
           style={{
             width: 36,
             height: 36,
