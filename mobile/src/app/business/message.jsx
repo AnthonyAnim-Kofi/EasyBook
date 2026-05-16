@@ -143,10 +143,10 @@ export default function BusinessMessageScreen() {
             { event: 'INSERT', schema: 'public', table: 'messages' },
             (payload) => {
               const newMsg = payload.new;
-              if (newMsg.sender_id !== partnerId && newMsg.receiver_id !== partnerId) return;
+              if (!isMessageInCurrentChat(newMsg, data.user)) return;
               setMessages(prev => {
                 if (prev.some(m => m.id === newMsg.id)) return prev;
-                return [...prev, { ...newMsg, isMe: String(newMsg.sender_id) === String(data.user.id) }];
+                return [...prev, { ...newMsg, isMe: getMessageSide(newMsg, data.user) === 'sent' }];
               });
               // If it's an incoming message, mark it read immediately (chat is open)
               if (String(newMsg.receiver_id) === String(data.user.id)) {
@@ -160,8 +160,8 @@ export default function BusinessMessageScreen() {
             { event: 'UPDATE', schema: 'public', table: 'messages' },
             (payload) => {
               const updated = payload.new;
-              if (updated.sender_id !== partnerId && updated.receiver_id !== partnerId) return;
-              setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, ...updated, isMe: m.isMe } : m));
+              if (!isMessageInCurrentChat(updated, data.user)) return;
+              setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, ...updated, isMe: getMessageSide(updated, data.user) === 'sent' } : m));
             }
           )
           .subscribe((status) => {
@@ -193,7 +193,7 @@ export default function BusinessMessageScreen() {
 
   // Unread = messages from partner to me that aren't yet marked read
   const unreadCount = messages.filter(
-    (m) => !m.isMe && !m.is_read && String(m.receiver_id) === String(currentUser?.id)
+    (m) => getMessageSide(m) === 'received' && !m.is_read && normalizeId(m.receiver_id) === normalizeId(currentUser?.id)
   ).length;
 
 
@@ -213,7 +213,7 @@ export default function BusinessMessageScreen() {
       // Process messages to include isMe property immediately
       const processed = data.map(m => ({
         ...m,
-        isMe: String(m.sender_id) === String(user.id)
+        isMe: getMessageSide(m, user) === 'sent'
       }));
       
       setMessages(processed);
