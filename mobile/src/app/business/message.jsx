@@ -50,22 +50,34 @@ export default function BusinessMessageScreen() {
   const [recording, setRecording] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [openReceipt, setOpenReceipt] = useState(null); // message id whose receipt popover is shown
   const scrollRef = useRef(null);
+  const markReadTimerRef = useRef(null);
+  const receiptHideTimerRef = useRef(null);
 
-  // Mark all incoming messages from partner as read
-  const markPartnerMessagesRead = async (user) => {
+  // Debounced mark-as-read: coalesces bursts and reconnect re-syncs into one write
+  const markPartnerMessagesRead = (user, { immediate = false } = {}) => {
     if (!user) return;
-    try {
-      await supabase
-        .from('messages')
-        .update({ is_read: true })
-        .eq('sender_id', partnerId)
-        .eq('receiver_id', user.id)
-        .eq('is_read', false);
-    } catch (err) {
-      console.warn('Failed to mark messages read:', err);
+    if (markReadTimerRef.current) clearTimeout(markReadTimerRef.current);
+    const run = async () => {
+      try {
+        await supabase
+          .from('messages')
+          .update({ is_read: true })
+          .eq('sender_id', partnerId)
+          .eq('receiver_id', user.id)
+          .eq('is_read', false);
+      } catch (err) {
+        console.warn('Failed to mark messages read:', err);
+      }
+    };
+    if (immediate) {
+      run();
+    } else {
+      markReadTimerRef.current = setTimeout(run, 600);
     }
   };
+
 
   useEffect(() => {
     let channel = null;
