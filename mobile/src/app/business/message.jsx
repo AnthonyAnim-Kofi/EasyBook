@@ -606,22 +606,49 @@ export default function BusinessMessageScreen() {
                         {format(new Date(msg.created_at), 'p')}
                       </Text>
                       {isMe && (
-                        <TouchableOpacity
-                          activeOpacity={0.7}
-                          onPress={() => Alert.alert(status, `This message has been ${status.toLowerCase()}.`)}
-                          accessibilityRole="image"
-                          accessibilityLabel={statusLabel}
-                          accessibilityHint="Double tap to view delivery status"
-                          hitSlop={8}
-                        >
-                          {status === 'Read' ? (
-                            <CheckCheck size={13} color={colors.primary} />
-                          ) : status === 'Delivered' ? (
-                            <CheckCheck size={13} color={colors.textMuted} />
-                          ) : (
-                            <Check size={13} color={colors.textMuted} />
+                        <View style={{ position: 'relative' }}>
+                          <TouchableOpacity
+                            activeOpacity={0.7}
+                            onPress={() => {
+                              if (receiptHideTimerRef.current) clearTimeout(receiptHideTimerRef.current);
+                              setOpenReceipt((cur) => (cur === msg.id ? null : msg.id));
+                              receiptHideTimerRef.current = setTimeout(() => setOpenReceipt(null), 1800);
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel={statusLabel}
+                            accessibilityHint="Shows message delivery status"
+                            hitSlop={8}
+                          >
+                            {status === 'Read' ? (
+                              <CheckCheck size={13} color={colors.primary} />
+                            ) : status === 'Delivered' ? (
+                              <CheckCheck size={13} color={colors.textMuted} />
+                            ) : (
+                              <Check size={13} color={colors.textMuted} />
+                            )}
+                          </TouchableOpacity>
+                          {openReceipt === msg.id && (
+                            <View
+                              accessible
+                              accessibilityLiveRegion="polite"
+                              accessibilityLabel={status}
+                              style={{
+                                position: 'absolute',
+                                bottom: 20,
+                                right: 0,
+                                backgroundColor: colors.text,
+                                paddingHorizontal: 10,
+                                paddingVertical: 6,
+                                borderRadius: 8,
+                                ...shadows.sm,
+                              }}
+                            >
+                              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>
+                                {status}
+                              </Text>
+                            </View>
                           )}
-                        </TouchableOpacity>
+                        </View>
                       )}
                     </View>
                   )}
