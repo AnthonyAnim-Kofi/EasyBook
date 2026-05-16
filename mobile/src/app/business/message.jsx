@@ -682,6 +682,7 @@ export default function BusinessMessageScreen() {
                       )}
                     </View>
                   )}
+                  </View>
                 </View>
               </View>
             );
