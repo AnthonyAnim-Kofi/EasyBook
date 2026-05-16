@@ -89,7 +89,7 @@ export default function BusinessMessageScreen() {
 
       setCurrentUser(data.user);
       await fetchMessages(data.user);
-      await markPartnerMessagesRead(data.user);
+      markPartnerMessagesRead(data.user, { immediate: true });
 
       // Fetch partner profile
       const { data: pData } = await supabase
