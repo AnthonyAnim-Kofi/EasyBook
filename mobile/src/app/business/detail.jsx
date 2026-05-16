@@ -880,7 +880,7 @@ export default function BusinessDetailScreen() {
             router.push({
               pathname: "/booking/date",
               params: {
-                salon: businessName,
+                salon: business?.name || paramName,
                 service: "Classic Haircut",
                 specialist: "Lily",
               },
