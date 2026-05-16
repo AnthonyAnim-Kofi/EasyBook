@@ -459,7 +459,9 @@ export default function BusinessMessageScreen() {
                 >
                   <View
                     style={{
-                      backgroundColor: isMe ? colors.primary : colors.card,
+                      backgroundColor: isMe ? colors.primary : colors.primarySurface,
+                      borderWidth: isMe ? 0 : 1,
+                      borderColor: isMe ? 'transparent' : colors.borderLight,
                       borderRadius: 18,
                       borderBottomRightRadius: isMe ? 4 : 18,
                       borderBottomLeftRadius: isMe ? 18 : 4,
