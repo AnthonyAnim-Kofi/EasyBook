@@ -299,7 +299,6 @@ export default function EditBusinessScreen() {
         await authService.updateProfile({
           business_name: formData.name,
           business_location: formData.address,
-          avatar_url: uploadedMainImage || formData.image_url,
         });
       } catch (profileErr) {
         console.warn("Profile sync warning:", profileErr);
