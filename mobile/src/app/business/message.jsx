@@ -52,63 +52,92 @@ export default function BusinessMessageScreen() {
   const [uploading, setUploading] = useState(false);
   const scrollRef = useRef(null);
 
+  // Mark all incoming messages from partner as read
+  const markPartnerMessagesRead = async (user) => {
+    if (!user) return;
+    try {
+      await supabase
+        .from('messages')
+        .update({ is_read: true })
+        .eq('sender_id', partnerId)
+        .eq('receiver_id', user.id)
+        .eq('is_read', false);
+    } catch (err) {
+      console.warn('Failed to mark messages read:', err);
+    }
+  };
+
   useEffect(() => {
     let channel = null;
+    let cancelled = false;
 
     const setup = async () => {
       const { data } = await supabase.auth.getUser();
-      if (data?.user) {
-        setCurrentUser(data.user);
-        fetchMessages(data.user);
-        
-        // Fetch partner profile
-        const { data: pData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', partnerId)
-          .single();
-        
-        if (pData) setPartnerProfile(pData);
-        
-        // Setup subscription
-        const channelName = `chat-${data.user.id}-${partnerId}`;
+      if (!data?.user || cancelled) return;
+
+      setCurrentUser(data.user);
+      await fetchMessages(data.user);
+      await markPartnerMessagesRead(data.user);
+
+      // Fetch partner profile
+      const { data: pData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', partnerId)
+        .single();
+
+      if (pData && !cancelled) setPartnerProfile(pData);
+
+      const subscribe = () => {
+        const channelName = `chat-${data.user.id}-${partnerId}-${Date.now()}`;
         channel = supabase
           .channel(channelName)
           .on(
             'postgres_changes',
-            {
-              event: 'INSERT',
-              schema: 'public',
-              table: 'messages',
-            },
+            { event: 'INSERT', schema: 'public', table: 'messages' },
             (payload) => {
               const newMsg = payload.new;
-              // Only process if it belongs to this conversation
-              if (newMsg.sender_id === partnerId || newMsg.receiver_id === partnerId) {
-                setMessages(prev => {
-                  if (prev.some(m => m.id === newMsg.id)) return prev;
-                  const processed = {
-                    ...newMsg,
-                    isMe: String(newMsg.sender_id) === String(data.user.id)
-                  };
-                  return [...prev, processed];
-                });
-                setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+              if (newMsg.sender_id !== partnerId && newMsg.receiver_id !== partnerId) return;
+              setMessages(prev => {
+                if (prev.some(m => m.id === newMsg.id)) return prev;
+                return [...prev, { ...newMsg, isMe: String(newMsg.sender_id) === String(data.user.id) }];
+              });
+              // If it's an incoming message, mark it read immediately (chat is open)
+              if (String(newMsg.receiver_id) === String(data.user.id)) {
+                markPartnerMessagesRead(data.user);
               }
+              setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
             }
           )
-          .subscribe();
-      }
+          .on(
+            'postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'messages' },
+            (payload) => {
+              const updated = payload.new;
+              if (updated.sender_id !== partnerId && updated.receiver_id !== partnerId) return;
+              setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, ...updated, isMe: m.isMe } : m));
+            }
+          )
+          .subscribe((status) => {
+            // Re-sync on (re)connect: refetch + re-mark read to recover from any missed events
+            if (status === 'SUBSCRIBED') {
+              fetchMessages(data.user);
+              markPartnerMessagesRead(data.user);
+            }
+          });
+      };
+
+      subscribe();
     };
 
     setup();
 
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
     };
   }, [partnerId]);
+
 
   const fetchMessages = async (user) => {
     try {
@@ -441,12 +470,25 @@ export default function BusinessMessageScreen() {
         >
           {messages.map((msg, index) => {
             const isMe = msg.isMe ?? (String(msg.sender_id) === String(currentUser?.id));
-            const showTime = index === 0 || 
-              new Date(msg.created_at).getTime() - new Date(messages[index-1].created_at).getTime() > 300000;
+            const prev = messages[index - 1];
+            const next = messages[index + 1];
+            const curTime = new Date(msg.created_at).getTime();
+
+            const showDateHeader =
+              !prev || curTime - new Date(prev.created_at).getTime() > 300000;
+
+            // Cluster = consecutive messages from same sender within 2 minutes
+            const isLastInCluster =
+              !next ||
+              String(next.sender_id) !== String(msg.sender_id) ||
+              new Date(next.created_at).getTime() - curTime > 120000;
+
+            const status = msg.is_read ? 'Read' : msg.id ? 'Delivered' : 'Sent';
+            const statusLabel = `Message ${status.toLowerCase()}`;
 
             return (
               <View key={msg.id}>
-                {showTime && (
+                {showDateHeader && (
                   <View style={{ alignItems: 'center', marginVertical: 16 }}>
                     <Text style={{ fontSize: 10, color: colors.textMuted, fontWeight: '600' }}>
                       {format(new Date(msg.created_at), 'EEE, d MMM • p')}
@@ -455,7 +497,7 @@ export default function BusinessMessageScreen() {
                 )}
                 <View
                   style={{
-                    marginBottom: 12,
+                    marginBottom: isLastInCluster ? 12 : 3,
                     alignItems: isMe ? "flex-end" : "flex-start",
                   }}
                 >
@@ -474,8 +516,8 @@ export default function BusinessMessageScreen() {
                     }}
                   >
                     {msg.media_type === 'image' && (
-                      <Image 
-                        source={{ uri: msg.media_url }} 
+                      <Image
+                        source={{ uri: msg.media_url }}
                         style={{ width: 220, height: 220, borderRadius: 16 }}
                         contentFit="cover"
                       />
@@ -500,28 +542,39 @@ export default function BusinessMessageScreen() {
                       </Text>
                     )}
                   </View>
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 4,
-                      marginTop: 4,
-                      paddingHorizontal: 6,
-                    }}
-                  >
-                    <Text style={{ fontSize: 10.5, color: colors.textMuted, fontWeight: '500' }}>
-                      {format(new Date(msg.created_at), 'p')}
-                    </Text>
-                    {isMe && (
-                      msg.is_read ? (
-                        <CheckCheck size={13} color={colors.primary} />
-                      ) : msg.id ? (
-                        <CheckCheck size={13} color={colors.textMuted} />
-                      ) : (
-                        <Check size={13} color={colors.textMuted} />
-                      )
-                    )}
-                  </View>
+                  {isLastInCluster && (
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 4,
+                        marginTop: 4,
+                        paddingHorizontal: 6,
+                      }}
+                    >
+                      <Text style={{ fontSize: 10.5, color: colors.textMuted, fontWeight: '500' }}>
+                        {format(new Date(msg.created_at), 'p')}
+                      </Text>
+                      {isMe && (
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={() => Alert.alert(status, `This message has been ${status.toLowerCase()}.`)}
+                          accessibilityRole="image"
+                          accessibilityLabel={statusLabel}
+                          accessibilityHint="Double tap to view delivery status"
+                          hitSlop={8}
+                        >
+                          {status === 'Read' ? (
+                            <CheckCheck size={13} color={colors.primary} />
+                          ) : status === 'Delivered' ? (
+                            <CheckCheck size={13} color={colors.textMuted} />
+                          ) : (
+                            <Check size={13} color={colors.textMuted} />
+                          )}
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
                 </View>
               </View>
             );
