@@ -44,13 +44,55 @@ export default function NotificationsScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchNotifications();
+    let channel = null;
+    let cancelled = false;
+
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) {
+        setLoading(false);
+        return;
+      }
+      await fetchNotifications(user);
+
+      // Realtime: keep notifications in sync across devices (new inserts +
+      // read-status flips made on another device).
+      channel = supabase
+        .channel(`notif-${user.id}-${Date.now()}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+          (payload) => {
+            setNotifications((prev) => {
+              if (payload.eventType === 'INSERT') {
+                if (prev.some((n) => n.id === payload.new.id)) return prev;
+                return [payload.new, ...prev];
+              }
+              if (payload.eventType === 'UPDATE') {
+                return prev.map((n) => (n.id === payload.new.id ? { ...n, ...payload.new } : n));
+              }
+              if (payload.eventType === 'DELETE') {
+                return prev.filter((n) => n.id !== payload.old.id);
+              }
+              return prev;
+            });
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') fetchNotifications(user);
+        });
+    })();
+
+    return () => {
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
+    };
   }, []);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (userArg) => {
     try {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = userArg || (await supabase.auth.getUser()).data.user;
       if (!user) {
         setLoading(false);
         return;
