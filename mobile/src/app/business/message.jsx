@@ -228,6 +228,32 @@ export default function BusinessMessageScreen() {
       const localMsg = { ...data, isMe: true };
       setMessages(prev => [...prev, localMsg]);
       setInput("");
+
+      // Fire-and-forget: create a notification for the receiver so it shows up
+      // in their Notifications screen (works for both customers and owners).
+      try {
+        const senderName =
+          currentUser?.user_metadata?.full_name ||
+          currentUser?.user_metadata?.business_name ||
+          currentUser?.email ||
+          'Someone';
+        const preview = messageText
+          ? messageText.slice(0, 120)
+          : mediaType === 'image'
+          ? 'Sent you an image'
+          : mediaType === 'audio'
+          ? 'Sent you a voice note'
+          : 'Sent you a message';
+        await supabase.from('notifications').insert({
+          user_id: partnerId,
+          type: 'message',
+          title: `New message from ${senderName}`,
+          message: preview,
+          is_read: false,
+        });
+      } catch (notifyErr) {
+        console.warn('Could not create notification:', notifyErr);
+      }
     } catch (err) {
       console.error('Error sending message:', err);
       Alert.alert("Error", "Failed to send message.");
