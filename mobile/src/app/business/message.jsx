@@ -67,6 +67,15 @@ export default function BusinessMessageScreen() {
           .eq('sender_id', partnerId)
           .eq('receiver_id', user.id)
           .eq('is_read', false);
+        // Also clear any unread "message" notifications from this partner so
+        // the notifications screen / badges stay in sync across devices.
+        await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('user_id', user.id)
+          .eq('type', 'message')
+          .eq('sender_id', partnerId)
+          .eq('is_read', false);
       } catch (err) {
         console.warn('Failed to mark messages read:', err);
       }
@@ -237,18 +246,33 @@ export default function BusinessMessageScreen() {
           currentUser?.user_metadata?.business_name ||
           currentUser?.email ||
           'Someone';
-        const preview = messageText
-          ? messageText.slice(0, 120)
-          : mediaType === 'image'
-          ? 'Sent you an image'
-          : mediaType === 'audio'
-          ? 'Sent you a voice note'
-          : 'Sent you a message';
+
+        const mediaLabel =
+          mediaType === 'image' ? '📷 Photo'
+          : mediaType === 'audio' ? '🎤 Voice note'
+          : mediaType ? '📎 Attachment'
+          : '';
+
+        const MAX = 80;
+        const truncate = (s) => (s.length > MAX ? s.slice(0, MAX - 1).trimEnd() + '…' : s);
+
+        let preview;
+        if (messageText && mediaLabel) {
+          preview = truncate(`${mediaLabel}: ${messageText}`);
+        } else if (messageText) {
+          preview = truncate(messageText);
+        } else if (mediaLabel) {
+          preview = mediaLabel;
+        } else {
+          preview = 'Sent you a message';
+        }
+
         await supabase.from('notifications').insert({
           user_id: partnerId,
           type: 'message',
           title: `New message from ${senderName}`,
           message: preview,
+          sender_id: user.id,
           is_read: false,
         });
       } catch (notifyErr) {
