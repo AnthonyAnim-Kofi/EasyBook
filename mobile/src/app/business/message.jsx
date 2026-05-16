@@ -50,22 +50,34 @@ export default function BusinessMessageScreen() {
   const [recording, setRecording] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [openReceipt, setOpenReceipt] = useState(null); // message id whose receipt popover is shown
   const scrollRef = useRef(null);
+  const markReadTimerRef = useRef(null);
+  const receiptHideTimerRef = useRef(null);
 
-  // Mark all incoming messages from partner as read
-  const markPartnerMessagesRead = async (user) => {
+  // Debounced mark-as-read: coalesces bursts and reconnect re-syncs into one write
+  const markPartnerMessagesRead = (user, { immediate = false } = {}) => {
     if (!user) return;
-    try {
-      await supabase
-        .from('messages')
-        .update({ is_read: true })
-        .eq('sender_id', partnerId)
-        .eq('receiver_id', user.id)
-        .eq('is_read', false);
-    } catch (err) {
-      console.warn('Failed to mark messages read:', err);
+    if (markReadTimerRef.current) clearTimeout(markReadTimerRef.current);
+    const run = async () => {
+      try {
+        await supabase
+          .from('messages')
+          .update({ is_read: true })
+          .eq('sender_id', partnerId)
+          .eq('receiver_id', user.id)
+          .eq('is_read', false);
+      } catch (err) {
+        console.warn('Failed to mark messages read:', err);
+      }
+    };
+    if (immediate) {
+      run();
+    } else {
+      markReadTimerRef.current = setTimeout(run, 600);
     }
   };
+
 
   useEffect(() => {
     let channel = null;
@@ -77,7 +89,7 @@ export default function BusinessMessageScreen() {
 
       setCurrentUser(data.user);
       await fetchMessages(data.user);
-      await markPartnerMessagesRead(data.user);
+      markPartnerMessagesRead(data.user, { immediate: true });
 
       // Fetch partner profile
       const { data: pData } = await supabase
@@ -135,8 +147,20 @@ export default function BusinessMessageScreen() {
     return () => {
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
+      if (markReadTimerRef.current) clearTimeout(markReadTimerRef.current);
+      if (receiptHideTimerRef.current) clearTimeout(receiptHideTimerRef.current);
     };
   }, [partnerId]);
+
+  // Sorted view of messages — handles slightly out-of-order realtime arrivals
+  const sortedMessages = [...messages].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
+  // Unread = messages from partner to me that aren't yet marked read
+  const unreadCount = messages.filter(
+    (m) => !m.isMe && !m.is_read && String(m.receiver_id) === String(currentUser?.id)
+  ).length;
 
 
   const fetchMessages = async (user) => {
@@ -406,18 +430,44 @@ export default function BusinessMessageScreen() {
         >
           <ArrowLeft size={18} color={colors.text} />
         </TouchableOpacity>
-        <Image
-          source={{ uri: partnerProfile?.avatar_url || partnerAvatar || "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150" }}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            marginRight: 10,
-            borderWidth: 2,
-            borderColor: colors.primary,
-          }}
-          contentFit="cover"
-        />
+        <View style={{ position: 'relative', marginRight: 10 }}>
+          <Image
+            source={{ uri: partnerProfile?.avatar_url || partnerAvatar || "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150" }}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              borderWidth: 2,
+              borderColor: colors.primary,
+            }}
+            contentFit="cover"
+          />
+          {unreadCount > 0 && (
+            <View
+              accessible
+              accessibilityLabel={`${unreadCount} unread message${unreadCount === 1 ? '' : 's'}`}
+              accessibilityLiveRegion="polite"
+              style={{
+                position: 'absolute',
+                top: -4,
+                right: -4,
+                minWidth: 20,
+                height: 20,
+                paddingHorizontal: 5,
+                borderRadius: 10,
+                backgroundColor: '#FF4B4B',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 2,
+                borderColor: colors.card,
+              }}
+            >
+              <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </Text>
+            </View>
+          )}
+        </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 15, fontWeight: typography.weight.extrabold, color: colors.text }}>
             {partnerProfile?.business_name || partnerProfile?.username || partnerName}
@@ -468,10 +518,10 @@ export default function BusinessMessageScreen() {
             scrollRef.current?.scrollToEnd({ animated: true })
           }
         >
-          {messages.map((msg, index) => {
+          {sortedMessages.map((msg, index) => {
             const isMe = msg.isMe ?? (String(msg.sender_id) === String(currentUser?.id));
-            const prev = messages[index - 1];
-            const next = messages[index + 1];
+            const prev = sortedMessages[index - 1];
+            const next = sortedMessages[index + 1];
             const curTime = new Date(msg.created_at).getTime();
 
             const showDateHeader =
@@ -556,22 +606,49 @@ export default function BusinessMessageScreen() {
                         {format(new Date(msg.created_at), 'p')}
                       </Text>
                       {isMe && (
-                        <TouchableOpacity
-                          activeOpacity={0.7}
-                          onPress={() => Alert.alert(status, `This message has been ${status.toLowerCase()}.`)}
-                          accessibilityRole="image"
-                          accessibilityLabel={statusLabel}
-                          accessibilityHint="Double tap to view delivery status"
-                          hitSlop={8}
-                        >
-                          {status === 'Read' ? (
-                            <CheckCheck size={13} color={colors.primary} />
-                          ) : status === 'Delivered' ? (
-                            <CheckCheck size={13} color={colors.textMuted} />
-                          ) : (
-                            <Check size={13} color={colors.textMuted} />
+                        <View style={{ position: 'relative' }}>
+                          <TouchableOpacity
+                            activeOpacity={0.7}
+                            onPress={() => {
+                              if (receiptHideTimerRef.current) clearTimeout(receiptHideTimerRef.current);
+                              setOpenReceipt((cur) => (cur === msg.id ? null : msg.id));
+                              receiptHideTimerRef.current = setTimeout(() => setOpenReceipt(null), 1800);
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel={statusLabel}
+                            accessibilityHint="Shows message delivery status"
+                            hitSlop={8}
+                          >
+                            {status === 'Read' ? (
+                              <CheckCheck size={13} color={colors.primary} />
+                            ) : status === 'Delivered' ? (
+                              <CheckCheck size={13} color={colors.textMuted} />
+                            ) : (
+                              <Check size={13} color={colors.textMuted} />
+                            )}
+                          </TouchableOpacity>
+                          {openReceipt === msg.id && (
+                            <View
+                              accessible
+                              accessibilityLiveRegion="polite"
+                              accessibilityLabel={status}
+                              style={{
+                                position: 'absolute',
+                                bottom: 20,
+                                right: 0,
+                                backgroundColor: colors.text,
+                                paddingHorizontal: 10,
+                                paddingVertical: 6,
+                                borderRadius: 8,
+                                ...shadows.sm,
+                              }}
+                            >
+                              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>
+                                {status}
+                              </Text>
+                            </View>
                           )}
-                        </TouchableOpacity>
+                        </View>
                       )}
                     </View>
                   )}
