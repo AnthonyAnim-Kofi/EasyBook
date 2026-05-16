@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Toaster } from 'sonner-native';
 import { AlertModal } from './polyfills/web/alerts.web';
 import './global.css';
+import { Analytics } from '@vercel/analytics/react';
 
 const GlobalErrorReporter = () => {
   useEffect(() => {
@@ -108,6 +109,7 @@ const CreateApp = () => {
     <>
       <Wrapper />
       <AlertModal />
+      <Analytics />
     </>
   );
 };
