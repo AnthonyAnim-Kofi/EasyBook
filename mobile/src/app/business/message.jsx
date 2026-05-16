@@ -24,6 +24,8 @@ import {
   Play,
   Pause,
   X,
+  Check,
+  CheckCheck,
 } from "lucide-react-native";
 import { Image } from "expo-image";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -462,10 +464,11 @@ export default function BusinessMessageScreen() {
                       backgroundColor: isMe ? colors.primary : colors.primarySurface,
                       borderWidth: isMe ? 0 : 1,
                       borderColor: isMe ? 'transparent' : colors.borderLight,
-                      borderRadius: 18,
-                      borderBottomRightRadius: isMe ? 4 : 18,
-                      borderBottomLeftRadius: isMe ? 18 : 4,
-                      padding: msg.media_type === 'image' ? 4 : 12,
+                      borderRadius: 20,
+                      borderBottomRightRadius: isMe ? 6 : 20,
+                      borderBottomLeftRadius: isMe ? 20 : 6,
+                      paddingVertical: msg.media_type === 'image' ? 4 : 12,
+                      paddingHorizontal: msg.media_type === 'image' ? 4 : 16,
                       maxWidth: "80%",
                       ...shadows.xs,
                     }}
@@ -473,21 +476,21 @@ export default function BusinessMessageScreen() {
                     {msg.media_type === 'image' && (
                       <Image 
                         source={{ uri: msg.media_url }} 
-                        style={{ width: 220, height: 220, borderRadius: 14 }}
+                        style={{ width: 220, height: 220, borderRadius: 16 }}
                         contentFit="cover"
                       />
                     )}
                     {msg.media_type === 'audio' && (
-                      <View style={{ width: 180 }}>
+                      <View style={{ width: 200 }}>
                         <AudioPlayer url={msg.media_url} isMe={isMe} />
                       </View>
                     )}
                     {msg.text && (
                       <Text
                         style={{
-                          fontSize: 14,
+                          fontSize: 15,
                           color: isMe ? "#fff" : colors.text,
-                          lineHeight: 20,
+                          lineHeight: 22,
                           marginTop: msg.media_type ? 8 : 0,
                           paddingHorizontal: msg.media_type ? 8 : 0,
                           paddingBottom: msg.media_type ? 4 : 0,
@@ -495,6 +498,28 @@ export default function BusinessMessageScreen() {
                       >
                         {msg.text}
                       </Text>
+                    )}
+                  </View>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      marginTop: 4,
+                      paddingHorizontal: 6,
+                    }}
+                  >
+                    <Text style={{ fontSize: 10.5, color: colors.textMuted, fontWeight: '500' }}>
+                      {format(new Date(msg.created_at), 'p')}
+                    </Text>
+                    {isMe && (
+                      msg.is_read ? (
+                        <CheckCheck size={13} color={colors.primary} />
+                      ) : msg.id ? (
+                        <CheckCheck size={13} color={colors.textMuted} />
+                      ) : (
+                        <Check size={13} color={colors.textMuted} />
+                      )
                     )}
                   </View>
                 </View>
