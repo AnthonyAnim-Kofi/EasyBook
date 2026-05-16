@@ -204,7 +204,7 @@ export default function AppointmentConfirmedScreen() {
                 {params.service || "Classic Haircut"}
               </Text>
               <Text style={{ fontSize: 13, color: "#888", marginTop: 2 }}>
-                with {params.specialist || "Lily"}
+                with {params.specialist || "No Specialist"}
               </Text>
             </View>
           </View>

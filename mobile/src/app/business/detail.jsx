@@ -184,7 +184,7 @@ export default function BusinessDetailScreen() {
                 }}
               >
                 <Image
-                  source={{ uri: sp.image }}
+                  source={{ uri: sp.image_url }}
                   style={{
                     width: 56,
                     height: 56,
@@ -229,8 +229,10 @@ export default function BusinessDetailScreen() {
                       pathname: "/booking/date",
                       params: {
                         salon: biz.name,
+                        salonImage: biz.image_url,
                         service: sp.service,
                         specialist: sp.name,
+                        specialistImage: sp.image_url,
                       },
                     })
                   }
@@ -318,8 +320,10 @@ export default function BusinessDetailScreen() {
                         pathname: "/booking/date",
                         params: {
                           salon: biz.name,
+                          salonImage: biz.image_url,
                           service: pkg.name,
                           price: pkg.price,
+                          specialist: 'No Specialist',
                         },
                       })
                     }

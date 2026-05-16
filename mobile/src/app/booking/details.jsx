@@ -129,7 +129,7 @@ export default function BookingDetailsScreen() {
             </Text>
             <Text style={{ fontSize: 13, color: "#555", marginTop: 2 }}>
               {params.service || "Classic Haircut"} ·{" "}
-              {params.specialist || "Lily"}
+              {params.specialist || "No Specialist"}
             </Text>
             <View style={{ flexDirection: "row", gap: 16, marginTop: 8 }}>
               <Text style={{ fontSize: 12, color: PRIMARY, fontWeight: "600" }}>

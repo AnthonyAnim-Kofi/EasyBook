@@ -48,7 +48,9 @@ export default function ChooseDateScreen() {
   const params = useLocalSearchParams();
   const salonName = params.salon || "Yanks Spa and Salon";
   const service = params.service || "Classic Haircut";
-  const specialist = params.specialist || "Lily";
+  const specialist = params.specialist || "No Specialist";
+  const salonImage = params.salonImage || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300";
+  const specialistImage = params.specialistImage;
 
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -148,7 +150,7 @@ export default function ChooseDateScreen() {
         >
           <Image
             source={{
-              uri: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=200",
+              uri: salonImage,
             }}
             style={{ width: 60, height: 60, borderRadius: 14 }}
             contentFit="cover"
@@ -172,19 +174,21 @@ export default function ChooseDateScreen() {
                 marginTop: 4,
               }}
             >
-              <Image
-                source={{
-                  uri: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=60",
-                }}
-                style={{ width: 20, height: 20, borderRadius: 10 }}
-                contentFit="cover"
-              />
+              {specialist !== "No Specialist" && specialistImage && (
+                <Image
+                  source={{
+                    uri: specialistImage,
+                  }}
+                  style={{ width: 20, height: 20, borderRadius: 10 }}
+                  contentFit="cover"
+                />
+              )}
               <Text
                 style={{
                   fontSize: 12,
                   color: PRIMARY,
                   fontWeight: "600",
-                  marginLeft: 6,
+                  marginLeft: specialist !== "No Specialist" ? 6 : 0,
                 }}
               >
                 {specialist}
