@@ -78,33 +78,18 @@ export default function BusinessMessageScreen() {
               event: 'INSERT',
               schema: 'public',
               table: 'messages',
-              filter: `receiver_id=eq.${data.user.id}`
             },
             (payload) => {
               const newMsg = payload.new;
-              if (newMsg.sender_id === partnerId) {
+              // Only process if it belongs to this conversation
+              if (newMsg.sender_id === partnerId || newMsg.receiver_id === partnerId) {
                 setMessages(prev => {
                   if (prev.some(m => m.id === newMsg.id)) return prev;
-                  return [...prev, newMsg];
-                });
-                setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-              }
-            }
-          )
-          .on(
-            'postgres_changes',
-            {
-              event: 'INSERT',
-              schema: 'public',
-              table: 'messages',
-              filter: `sender_id=eq.${data.user.id}`
-            },
-            (payload) => {
-              const newMsg = payload.new;
-              if (newMsg.receiver_id === partnerId) {
-                setMessages(prev => {
-                  if (prev.some(m => m.id === newMsg.id)) return prev;
-                  return [...prev, newMsg];
+                  const processed = {
+                    ...newMsg,
+                    isMe: String(newMsg.sender_id) === String(data.user.id)
+                  };
+                  return [...prev, processed];
                 });
                 setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
               }
@@ -135,7 +120,14 @@ export default function BusinessMessageScreen() {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setMessages(data);
+      
+      // Process messages to include isMe property immediately
+      const processed = data.map(m => ({
+        ...m,
+        isMe: String(m.sender_id) === String(user.id)
+      }));
+      
+      setMessages(processed);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 100);
     } catch (err) {
       console.error('Error fetching messages:', err);
@@ -162,17 +154,24 @@ export default function BusinessMessageScreen() {
         setSelectedMedia(null);
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('messages')
-        .insert({
+        .insert([{
           sender_id: user.id,
           receiver_id: partnerId,
           text: messageText,
           media_url: mediaUrl,
           media_type: mediaType,
-        });
+          is_read: false
+        }])
+        .select()
+        .single();
 
       if (error) throw error;
+      
+      // Add local message with isMe true
+      const localMsg = { ...data, isMe: true };
+      setMessages(prev => [...prev, localMsg]);
       setInput("");
     } catch (err) {
       console.error('Error sending message:', err);
@@ -439,8 +438,7 @@ export default function BusinessMessageScreen() {
           }
         >
           {messages.map((msg, index) => {
-            // Robust check: if the sender is not the partner, it's me
-            const isMe = msg.sender_id !== partnerId;
+            const isMe = msg.isMe ?? (String(msg.sender_id) === String(currentUser?.id));
             const showTime = index === 0 || 
               new Date(msg.created_at).getTime() - new Date(messages[index-1].created_at).getTime() > 300000;
 
