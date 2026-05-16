@@ -430,18 +430,44 @@ export default function BusinessMessageScreen() {
         >
           <ArrowLeft size={18} color={colors.text} />
         </TouchableOpacity>
-        <Image
-          source={{ uri: partnerProfile?.avatar_url || partnerAvatar || "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150" }}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            marginRight: 10,
-            borderWidth: 2,
-            borderColor: colors.primary,
-          }}
-          contentFit="cover"
-        />
+        <View style={{ position: 'relative', marginRight: 10 }}>
+          <Image
+            source={{ uri: partnerProfile?.avatar_url || partnerAvatar || "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150" }}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              borderWidth: 2,
+              borderColor: colors.primary,
+            }}
+            contentFit="cover"
+          />
+          {unreadCount > 0 && (
+            <View
+              accessible
+              accessibilityLabel={`${unreadCount} unread message${unreadCount === 1 ? '' : 's'}`}
+              accessibilityLiveRegion="polite"
+              style={{
+                position: 'absolute',
+                top: -4,
+                right: -4,
+                minWidth: 20,
+                height: 20,
+                paddingHorizontal: 5,
+                borderRadius: 10,
+                backgroundColor: '#FF4B4B',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 2,
+                borderColor: colors.card,
+              }}
+            >
+              <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </Text>
+            </View>
+          )}
+        </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 15, fontWeight: typography.weight.extrabold, color: colors.text }}>
             {partnerProfile?.business_name || partnerProfile?.username || partnerName}
