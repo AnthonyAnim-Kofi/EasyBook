@@ -67,6 +67,15 @@ export default function BusinessMessageScreen() {
           .eq('sender_id', partnerId)
           .eq('receiver_id', user.id)
           .eq('is_read', false);
+        // Also clear any unread "message" notifications from this partner so
+        // the notifications screen / badges stay in sync across devices.
+        await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('user_id', user.id)
+          .eq('type', 'message')
+          .eq('sender_id', partnerId)
+          .eq('is_read', false);
       } catch (err) {
         console.warn('Failed to mark messages read:', err);
       }
