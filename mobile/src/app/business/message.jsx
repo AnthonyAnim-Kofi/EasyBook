@@ -594,10 +594,8 @@ export default function BusinessMessageScreen() {
           }
         >
           {sortedMessages.map((msg, index) => {
-            // Authoritative: who I am right now decides left/right — not stale msg.isMe
-            const isMe = currentUser
-              ? String(msg.sender_id) === String(currentUser.id)
-              : !!msg.isMe;
+            // Authoritative: sender_id/receiver_id decide left/right — never stale msg.isMe
+            const isMe = getMessageSide(msg) === 'sent';
             const prev = sortedMessages[index - 1];
             const next = sortedMessages[index + 1];
             const curTime = new Date(msg.created_at).getTime();
