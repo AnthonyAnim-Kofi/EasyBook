@@ -623,12 +623,22 @@ export default function BusinessMessageScreen() {
                 )}
                 <View
                   style={{
+                    width: '100%',
+                    alignSelf: 'stretch',
                     marginBottom: isLastInCluster ? 12 : 3,
                     flexDirection: 'row',
                     justifyContent: isMe ? 'flex-end' : 'flex-start',
                   }}
                 >
-                  <View style={{ maxWidth: '80%', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
+                  <View
+                    style={{
+                      maxWidth: '80%',
+                      alignSelf: isMe ? 'flex-end' : 'flex-start',
+                      alignItems: isMe ? 'flex-end' : 'flex-start',
+                      marginLeft: isMe ? 'auto' : 0,
+                      marginRight: isMe ? 0 : 'auto',
+                    }}
+                  >
                   <View
                     style={{
                       backgroundColor: isMe ? colors.primary : colors.primarySurface,
