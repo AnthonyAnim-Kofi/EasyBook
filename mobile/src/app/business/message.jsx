@@ -39,7 +39,8 @@ export default function BusinessMessageScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
-  const { id: partnerId, name: partnerName, avatar: partnerAvatar } = params;
+  const { id: rawPartnerId, name: partnerName, avatar: partnerAvatar } = params;
+  const partnerId = Array.isArray(rawPartnerId) ? rawPartnerId[0] : rawPartnerId;
   
   const [currentUser, setCurrentUser] = useState(null);
   const [partnerProfile, setPartnerProfile] = useState(null);
@@ -54,6 +55,30 @@ export default function BusinessMessageScreen() {
   const scrollRef = useRef(null);
   const markReadTimerRef = useRef(null);
   const receiptHideTimerRef = useRef(null);
+
+  const normalizeId = (value) => String(Array.isArray(value) ? value[0] : value || '');
+  const getMessageSide = (msg, user = currentUser) => {
+    const myId = normalizeId(user?.id);
+    const senderId = normalizeId(msg.sender_id);
+    const receiverId = normalizeId(msg.receiver_id);
+
+    if (!myId) return msg.isMe ? 'sent' : 'received';
+    if (senderId === myId) return 'sent';
+    if (receiverId === myId) return 'received';
+    return msg.isMe ? 'sent' : 'received';
+  };
+
+  const isMessageInCurrentChat = (msg, user) => {
+    const myId = normalizeId(user?.id);
+    const otherId = normalizeId(partnerId);
+    const senderId = normalizeId(msg.sender_id);
+    const receiverId = normalizeId(msg.receiver_id);
+
+    return (
+      (senderId === myId && receiverId === otherId) ||
+      (senderId === otherId && receiverId === myId)
+    );
+  };
 
   // Debounced mark-as-read: coalesces bursts and reconnect re-syncs into one write
   const markPartnerMessagesRead = (user, { immediate = false } = {}) => {
@@ -118,10 +143,10 @@ export default function BusinessMessageScreen() {
             { event: 'INSERT', schema: 'public', table: 'messages' },
             (payload) => {
               const newMsg = payload.new;
-              if (newMsg.sender_id !== partnerId && newMsg.receiver_id !== partnerId) return;
+              if (!isMessageInCurrentChat(newMsg, data.user)) return;
               setMessages(prev => {
                 if (prev.some(m => m.id === newMsg.id)) return prev;
-                return [...prev, { ...newMsg, isMe: String(newMsg.sender_id) === String(data.user.id) }];
+                return [...prev, { ...newMsg, isMe: getMessageSide(newMsg, data.user) === 'sent' }];
               });
               // If it's an incoming message, mark it read immediately (chat is open)
               if (String(newMsg.receiver_id) === String(data.user.id)) {
@@ -135,8 +160,8 @@ export default function BusinessMessageScreen() {
             { event: 'UPDATE', schema: 'public', table: 'messages' },
             (payload) => {
               const updated = payload.new;
-              if (updated.sender_id !== partnerId && updated.receiver_id !== partnerId) return;
-              setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, ...updated, isMe: m.isMe } : m));
+              if (!isMessageInCurrentChat(updated, data.user)) return;
+              setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, ...updated, isMe: getMessageSide(updated, data.user) === 'sent' } : m));
             }
           )
           .subscribe((status) => {
@@ -168,7 +193,7 @@ export default function BusinessMessageScreen() {
 
   // Unread = messages from partner to me that aren't yet marked read
   const unreadCount = messages.filter(
-    (m) => !m.isMe && !m.is_read && String(m.receiver_id) === String(currentUser?.id)
+    (m) => getMessageSide(m) === 'received' && !m.is_read && normalizeId(m.receiver_id) === normalizeId(currentUser?.id)
   ).length;
 
 
@@ -188,7 +213,7 @@ export default function BusinessMessageScreen() {
       // Process messages to include isMe property immediately
       const processed = data.map(m => ({
         ...m,
-        isMe: String(m.sender_id) === String(user.id)
+        isMe: getMessageSide(m, user) === 'sent'
       }));
       
       setMessages(processed);
@@ -569,10 +594,8 @@ export default function BusinessMessageScreen() {
           }
         >
           {sortedMessages.map((msg, index) => {
-            // Authoritative: who I am right now decides left/right — not stale msg.isMe
-            const isMe = currentUser
-              ? String(msg.sender_id) === String(currentUser.id)
-              : !!msg.isMe;
+            // Authoritative: sender_id/receiver_id decide left/right — never stale msg.isMe
+            const isMe = getMessageSide(msg) === 'sent';
             const prev = sortedMessages[index - 1];
             const next = sortedMessages[index + 1];
             const curTime = new Date(msg.created_at).getTime();
@@ -600,12 +623,22 @@ export default function BusinessMessageScreen() {
                 )}
                 <View
                   style={{
+                    width: '100%',
+                    alignSelf: 'stretch',
                     marginBottom: isLastInCluster ? 12 : 3,
                     flexDirection: 'row',
                     justifyContent: isMe ? 'flex-end' : 'flex-start',
                   }}
                 >
-                  <View style={{ maxWidth: '80%', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
+                  <View
+                    style={{
+                      maxWidth: '80%',
+                      alignSelf: isMe ? 'flex-end' : 'flex-start',
+                      alignItems: isMe ? 'flex-end' : 'flex-start',
+                      marginLeft: isMe ? 'auto' : 0,
+                      marginRight: isMe ? 0 : 'auto',
+                    }}
+                  >
                   <View
                     style={{
                       backgroundColor: isMe ? colors.primary : colors.primarySurface,
