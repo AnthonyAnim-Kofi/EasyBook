@@ -39,10 +39,25 @@ export const businessService = {
       .select(`
         *,
         specialists (*),
-        packages (*)
+        packages (*),
+        reviews (
+          *,
+          profiles (full_name, avatar_url)
+        )
       `)
       .eq('id', id)
       .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async getReviews(businessId) {
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('*, profiles(full_name, avatar_url)')
+      .eq('business_id', businessId)
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
     return data;

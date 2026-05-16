@@ -99,7 +99,7 @@ export default function BookingSummaryScreen() {
           </TouchableOpacity>
           
           <TouchableOpacity 
-            onPress={() => router.push({ pathname: "/business/message", params: { name: params.salon, avatar: params.image } })}
+            onPress={() => router.push({ pathname: "/business/message", params: { id: params.ownerId, name: params.salon, avatar: params.image } })}
             style={{ flex: 1, height: 56, borderRadius: 28, backgroundColor: PRIMARY, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}
           >
             <MessageSquare size={18} color="#fff" />

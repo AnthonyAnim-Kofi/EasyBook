@@ -156,10 +156,19 @@ export default function BusinessDetailScreen() {
     "https://images.unsplash.com/photo-1527799822367-3debd8b8df6a?w=400"
   ];
 
-  const reviews = biz.reviews || [
-    { id: "1", name: "Alice Mensah", avatar: "https://i.pravatar.cc/150?u=1", date: "2 days ago", rating: 4, comment: "Amazing service! Loved the facial." },
-    { id: "2", name: "John Doe", avatar: "https://i.pravatar.cc/150?u=2", date: "1 week ago", rating: 5, comment: "Best hair cut I've had in ages." }
-  ];
+  const reviews = biz.reviews?.map(r => ({
+    id: r.id,
+    name: r.profiles?.full_name || "User",
+    avatar: r.profiles?.avatar_url || `https://i.pravatar.cc/150?u=${r.id}`,
+    date: new Date(r.created_at).toLocaleDateString(),
+    rating: r.rating,
+    comment: r.comment
+  })) || [];
+
+  // Calculate average rating
+  const avgRating = reviews.length > 0 
+    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
+    : "5.0";
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -391,11 +400,11 @@ export default function BusinessDetailScreen() {
               <Text
                 style={{ fontSize: 48, fontWeight: "800", color: "#1A1A1A" }}
               >
-                3.0
+                {avgRating}
               </Text>
-              <StarRow rating={3} size={18} />
+              <StarRow rating={parseFloat(avgRating)} size={18} />
               <Text style={{ fontSize: 13, color: "#888", marginTop: 6 }}>
-                1k+ Reviews
+                {reviews.length} Reviews
               </Text>
             </View>
             {reviews.map((review) => (
@@ -889,8 +898,9 @@ export default function BusinessDetailScreen() {
               pathname: "/booking/date",
               params: {
                 salon: business?.name || paramName,
-                service: "Classic Haircut",
-                specialist: "Lily",
+                salonImage: business?.image_url,
+                service: "Select Service",
+                specialist: "No Specialist",
               },
             })
           }

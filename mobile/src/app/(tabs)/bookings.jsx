@@ -197,10 +197,32 @@ function BookingCard({ item, isFirst, onPress, onClear, onRestore, tab }) {
         </Text>
       </View>
 
-      <ChevronRight
-        size={18}
-        color={isTeal ? "rgba(255,255,255,0.7)" : colors.textMuted}
-      />
+      <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
+        {tab === "Completed" && (
+          <TouchableOpacity 
+            onPress={(e) => {
+              e.stopPropagation();
+              router.push({
+                pathname: "/booking/review",
+                params: { bookingId: item.id, businessId: item.businessId, businessName: item.salon }
+              });
+            }}
+            style={{ 
+              backgroundColor: colors.primarySurface, 
+              paddingHorizontal: 12, 
+              paddingVertical: 6, 
+              borderRadius: radius.md,
+              marginBottom: 8
+            }}
+          >
+            <Text style={{ fontSize: 11, color: colors.primary, fontWeight: '700' }}>Review</Text>
+          </TouchableOpacity>
+        )}
+        <ChevronRight
+          size={18}
+          color={isTeal ? "rgba(255,255,255,0.7)" : colors.textMuted}
+        />
+      </View>
     </TouchableOpacity>
   );
 }
@@ -229,7 +251,7 @@ export default function BookingsScreen() {
         .from('bookings')
         .select(`
           *,
-          business:businesses (name, city, address, image_url),
+          business:businesses (id, name, city, address, image_url, owner_id, id),
           package:packages (name)
         `)
         .eq('user_id', user.id)
@@ -240,12 +262,14 @@ export default function BookingsScreen() {
       const formatted = data.map(b => ({
         id: b.id,
         salon: b.business.name,
+        ownerId: b.business.owner_id,
         location: `${b.business.city}, ${b.business.address}`,
         time: b.time.substring(0, 5),
         date: format(new Date(b.date), 'EEE, d MMM yyyy'),
         status: b.status,
         image: b.business.image_url || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=200",
-        packageName: b.package?.name || 'Service'
+        packageName: b.package?.name || 'Service',
+        businessId: b.business.id
       }));
 
       setBookings(formatted);
@@ -348,7 +372,7 @@ export default function BookingsScreen() {
               onPress={() =>
                 router.push({
                   pathname: "/booking/summary",
-                  params: { id: item.id },
+                  params: { ...item },
                 })
               }
             />
