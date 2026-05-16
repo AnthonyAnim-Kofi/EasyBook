@@ -39,7 +39,8 @@ export default function BusinessMessageScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
-  const { id: partnerId, name: partnerName, avatar: partnerAvatar } = params;
+  const { id: rawPartnerId, name: partnerName, avatar: partnerAvatar } = params;
+  const partnerId = Array.isArray(rawPartnerId) ? rawPartnerId[0] : rawPartnerId;
   
   const [currentUser, setCurrentUser] = useState(null);
   const [partnerProfile, setPartnerProfile] = useState(null);
@@ -54,6 +55,30 @@ export default function BusinessMessageScreen() {
   const scrollRef = useRef(null);
   const markReadTimerRef = useRef(null);
   const receiptHideTimerRef = useRef(null);
+
+  const normalizeId = (value) => String(Array.isArray(value) ? value[0] : value || '');
+  const getMessageSide = (msg, user = currentUser) => {
+    const myId = normalizeId(user?.id);
+    const senderId = normalizeId(msg.sender_id);
+    const receiverId = normalizeId(msg.receiver_id);
+
+    if (!myId) return msg.isMe ? 'sent' : 'received';
+    if (senderId === myId) return 'sent';
+    if (receiverId === myId) return 'received';
+    return msg.isMe ? 'sent' : 'received';
+  };
+
+  const isMessageInCurrentChat = (msg, user) => {
+    const myId = normalizeId(user?.id);
+    const otherId = normalizeId(partnerId);
+    const senderId = normalizeId(msg.sender_id);
+    const receiverId = normalizeId(msg.receiver_id);
+
+    return (
+      (senderId === myId && receiverId === otherId) ||
+      (senderId === otherId && receiverId === myId)
+    );
+  };
 
   // Debounced mark-as-read: coalesces bursts and reconnect re-syncs into one write
   const markPartnerMessagesRead = (user, { immediate = false } = {}) => {
