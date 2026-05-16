@@ -367,7 +367,7 @@ export default function BusinessBookingDetailScreen() {
           onPress={() =>
             router.push({
               pathname: "/business/message",
-              params: { name: customer, avatar },
+              params: { id: params.user_id, name: customer, avatar },
             })
           }
           style={{

@@ -434,6 +434,7 @@ export default function BusinessDashboardScreen() {
         services: b.package?.name ? [b.package.name] : ["General Service"],
         date: format(new Date(b.date), "dd MMM yyyy"),
         time: b.time,
+        user_id: b.user_id,
         status: b.status === 'confirmed' ? 'active' : b.status === 'pending' ? 'request' : b.status
       }));
 
@@ -628,6 +629,7 @@ export default function BusinessDashboardScreen() {
                 services: JSON.stringify(b.services),
                 date: b.date,
                 time: b.time,
+                user_id: b.user_id,
               };
               if (activeFilter === "Active")
                 return (
@@ -660,7 +662,7 @@ export default function BusinessDashboardScreen() {
                   key={b.id}
                   booking={b}
                   onAccept={() => handleAccept(b.id)}
-                  onMessage={() => router.push({ pathname: "/business/message", params: { id: b.id, name: b.customer } })}
+                  onMessage={() => router.push({ pathname: "/business/message", params: { id: b.user_id, name: b.customer } })}
                   onPress={() =>
                     router.push({
                       pathname: "/business/booking-detail",

@@ -124,7 +124,7 @@ export default function BusinessDetailScreen() {
         });
         break;
       case "Message":
-        router.push({ pathname: "/business/message", params: { id: biz.id, name: biz.name } });
+        router.push({ pathname: "/business/message", params: { id: biz.owner_id, name: biz.name } });
         break;
     }
   };
