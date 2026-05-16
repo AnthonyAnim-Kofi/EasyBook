@@ -630,6 +630,7 @@ export default function BusinessDashboardScreen() {
                 date: b.date,
                 time: b.time,
                 user_id: b.user_id,
+                status: b.status,
               };
               if (activeFilter === "Active")
                 return (

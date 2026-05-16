@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -11,6 +12,7 @@ import {
 } from "lucide-react-native";
 import { Image } from "expo-image";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { supabase } from "@/utils/supabase";
 
 const PRIMARY = "#00A896";
 
@@ -18,6 +20,9 @@ export default function BusinessBookingDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
+
+  const [loading, setLoading] = useState(false);
+  const status = params.status || "confirmed";
 
   const customer = params.customer || "Customer";
   const avatar = params.avatar;
@@ -32,6 +37,27 @@ export default function BusinessBookingDetailScreen() {
   const TAX_RATE = 0.12;
   const subtotal = totalPrice / (1 + TAX_RATE);
   const taxAmount = totalPrice - subtotal;
+
+  const handleStatusUpdate = async (newStatus) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: newStatus })
+        .eq('id', params.id);
+
+      if (error) throw error;
+      
+      Alert.alert("Success", `Booking marked as ${newStatus}`, [
+        { text: "OK", onPress: () => router.back() }
+      ]);
+    } catch (err) {
+      console.error("Error updating status:", err);
+      Alert.alert("Error", "Could not update status");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F7F7F7" }}>
@@ -63,9 +89,14 @@ export default function BusinessBookingDetailScreen() {
           >
             <ArrowLeft size={20} color="#1A1A1A" />
           </TouchableOpacity>
-          <Text style={{ fontSize: 17, fontWeight: "700", color: "#1A1A1A" }}>
-            Booking Details
-          </Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 17, fontWeight: "700", color: "#1A1A1A" }}>
+              Booking Details
+            </Text>
+            <Text style={{ fontSize: 12, color: PRIMARY, fontWeight: "600", textTransform: "capitalize" }}>
+              Status: {status}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -387,24 +418,48 @@ export default function BusinessBookingDetailScreen() {
             Message
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={{
-            flex: 1.5,
-            backgroundColor: PRIMARY,
-            borderRadius: 30,
-            paddingVertical: 16,
-            alignItems: "center",
-            shadowColor: PRIMARY,
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.3,
-            shadowRadius: 12,
-            elevation: 5,
-          }}
-        >
-          <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>
-            Accept Booking
-          </Text>
-        </TouchableOpacity>
+
+        {status === 'pending' && (
+          <TouchableOpacity
+            onPress={() => handleStatusUpdate('confirmed')}
+            disabled={loading}
+            style={{
+              flex: 1.5,
+              backgroundColor: PRIMARY,
+              borderRadius: 30,
+              paddingVertical: 16,
+              alignItems: "center",
+              shadowColor: PRIMARY,
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.3,
+              shadowRadius: 12,
+              elevation: 5,
+            }}
+          >
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>Accept Booking</Text>}
+          </TouchableOpacity>
+        )}
+
+        {(status === 'confirmed' || status === 'active') && (
+          <TouchableOpacity
+            onPress={() => handleStatusUpdate('completed')}
+            disabled={loading}
+            style={{
+              flex: 1.5,
+              backgroundColor: PRIMARY,
+              borderRadius: 30,
+              paddingVertical: 16,
+              alignItems: "center",
+              shadowColor: PRIMARY,
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.3,
+              shadowRadius: 12,
+              elevation: 5,
+            }}
+          >
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>Complete Service</Text>}
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
