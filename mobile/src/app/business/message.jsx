@@ -52,63 +52,92 @@ export default function BusinessMessageScreen() {
   const [uploading, setUploading] = useState(false);
   const scrollRef = useRef(null);
 
+  // Mark all incoming messages from partner as read
+  const markPartnerMessagesRead = async (user) => {
+    if (!user) return;
+    try {
+      await supabase
+        .from('messages')
+        .update({ is_read: true })
+        .eq('sender_id', partnerId)
+        .eq('receiver_id', user.id)
+        .eq('is_read', false);
+    } catch (err) {
+      console.warn('Failed to mark messages read:', err);
+    }
+  };
+
   useEffect(() => {
     let channel = null;
+    let cancelled = false;
 
     const setup = async () => {
       const { data } = await supabase.auth.getUser();
-      if (data?.user) {
-        setCurrentUser(data.user);
-        fetchMessages(data.user);
-        
-        // Fetch partner profile
-        const { data: pData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', partnerId)
-          .single();
-        
-        if (pData) setPartnerProfile(pData);
-        
-        // Setup subscription
-        const channelName = `chat-${data.user.id}-${partnerId}`;
+      if (!data?.user || cancelled) return;
+
+      setCurrentUser(data.user);
+      await fetchMessages(data.user);
+      await markPartnerMessagesRead(data.user);
+
+      // Fetch partner profile
+      const { data: pData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', partnerId)
+        .single();
+
+      if (pData && !cancelled) setPartnerProfile(pData);
+
+      const subscribe = () => {
+        const channelName = `chat-${data.user.id}-${partnerId}-${Date.now()}`;
         channel = supabase
           .channel(channelName)
           .on(
             'postgres_changes',
-            {
-              event: 'INSERT',
-              schema: 'public',
-              table: 'messages',
-            },
+            { event: 'INSERT', schema: 'public', table: 'messages' },
             (payload) => {
               const newMsg = payload.new;
-              // Only process if it belongs to this conversation
-              if (newMsg.sender_id === partnerId || newMsg.receiver_id === partnerId) {
-                setMessages(prev => {
-                  if (prev.some(m => m.id === newMsg.id)) return prev;
-                  const processed = {
-                    ...newMsg,
-                    isMe: String(newMsg.sender_id) === String(data.user.id)
-                  };
-                  return [...prev, processed];
-                });
-                setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+              if (newMsg.sender_id !== partnerId && newMsg.receiver_id !== partnerId) return;
+              setMessages(prev => {
+                if (prev.some(m => m.id === newMsg.id)) return prev;
+                return [...prev, { ...newMsg, isMe: String(newMsg.sender_id) === String(data.user.id) }];
+              });
+              // If it's an incoming message, mark it read immediately (chat is open)
+              if (String(newMsg.receiver_id) === String(data.user.id)) {
+                markPartnerMessagesRead(data.user);
               }
+              setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
             }
           )
-          .subscribe();
-      }
+          .on(
+            'postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'messages' },
+            (payload) => {
+              const updated = payload.new;
+              if (updated.sender_id !== partnerId && updated.receiver_id !== partnerId) return;
+              setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, ...updated, isMe: m.isMe } : m));
+            }
+          )
+          .subscribe((status) => {
+            // Re-sync on (re)connect: refetch + re-mark read to recover from any missed events
+            if (status === 'SUBSCRIBED') {
+              fetchMessages(data.user);
+              markPartnerMessagesRead(data.user);
+            }
+          });
+      };
+
+      subscribe();
     };
 
     setup();
 
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
     };
   }, [partnerId]);
+
 
   const fetchMessages = async (user) => {
     try {
