@@ -372,6 +372,7 @@ export default function BusinessDashboardScreen() {
   const [user, setUser] = useState(null);
   const [businessData, setBusinessData] = useState(null);
   const [pendingCount, setPendingCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useFocusEffect(
     useCallback(() => {

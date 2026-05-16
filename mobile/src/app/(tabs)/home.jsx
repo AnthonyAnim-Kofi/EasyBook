@@ -9,6 +9,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Modal,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -33,6 +34,7 @@ import SpecialistCard from "@/components/SpecialistCard";
 import authService from "@/services/auth";
 import businessService from "@/services/business";
 import { getCurrentLocation } from "@/utils/location";
+import { supabase } from "@/utils/supabase";
 
 const { width } = Dimensions.get("window");
 const RECENT_SEARCHES_KEY = "recent_searches";
@@ -60,6 +62,7 @@ export default function HomeScreen() {
   const [recentSearches, setRecentSearches] = useState([]);
   const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [notificationCount, setNotificationCount] = useState(0);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [filters, setFilters] = useState({ city: "", rating: 0 });
 
@@ -147,6 +150,17 @@ export default function HomeScreen() {
       const bizNames = loadedBiz.map(b => b.name);
       const catNames = (catData.categories || []).map(c => c.name);
       setSuggestedSearches([...new Set([...bizNames, ...catNames])]);
+
+      // Load Notifications (Confirmed bookings the user hasn't "seen" or just all confirmed)
+      if (storedUser) {
+        const { count, error: countError } = await supabase
+          .from('bookings')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', storedUser.id)
+          .eq('status', 'confirmed');
+        
+        if (!countError) setNotificationCount(count || 0);
+      }
     } catch (err) {
       console.log('Home data load error:', err);
     } finally {
@@ -224,16 +238,36 @@ export default function HomeScreen() {
             <ChevronDown size={15} color={colors.whiteAlpha85} />
           </TouchableOpacity>
           <TouchableOpacity 
-            onPress={() => router.push("/notifications")}
+            onPress={() => {
+              if (notificationCount > 0) {
+                Alert.alert("Notifications", `You have ${notificationCount} confirmed booking${notificationCount > 1 ? 's' : ''}.`);
+              } else {
+                Alert.alert("Notifications", "No new notifications.");
+              }
+            }}
             style={{ position: "relative" }}
           >
             <Bell size={22} color={colors.white} />
-            <View
-              style={{
-                position: "absolute", top: -2, right: -2, width: 8, height: 8,
-                borderRadius: 4, backgroundColor: colors.danger, borderWidth: 1.5, borderColor: colors.primary,
-              }}
-            />
+            {notificationCount > 0 && (
+              <View
+                style={{
+                  position: "absolute",
+                  top: -4,
+                  right: -4,
+                  minWidth: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  backgroundColor: colors.danger,
+                  borderWidth: 1.5,
+                  borderColor: colors.primary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 2
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 8, fontWeight: '800' }}>{notificationCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 

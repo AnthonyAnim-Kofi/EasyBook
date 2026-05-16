@@ -39,6 +39,8 @@ export default function BusinessMessageScreen() {
   const params = useLocalSearchParams();
   const { id: partnerId, name: partnerName, avatar: partnerAvatar } = params;
   
+  const [currentUser, setCurrentUser] = useState(null);
+  const [selectedMedia, setSelectedMedia] = useState(null); // { uri, type }
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
@@ -48,19 +50,21 @@ export default function BusinessMessageScreen() {
   const scrollRef = useRef(null);
 
   useEffect(() => {
-    fetchMessages();
-    const cleanup = subscribeToMessages();
-    return () => {
-      if (cleanup && typeof cleanup === 'function') cleanup();
-      else if (cleanup instanceof Promise) cleanup.then(unsub => unsub?.());
-    };
+    supabase.auth.getUser().then(({ data }) => {
+      setCurrentUser(data.user);
+      fetchMessages(data.user);
+      const cleanup = subscribeToMessages(data.user);
+      return () => {
+        if (cleanup && typeof cleanup === 'function') cleanup();
+        else if (cleanup instanceof Promise) cleanup.then(unsub => unsub?.());
+      };
+    });
   }, []);
 
-  const fetchMessages = async () => {
+  const fetchMessages = async (user) => {
     try {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setLoading(true);
 
       const { data, error } = await supabase
         .from('messages')
@@ -78,8 +82,7 @@ export default function BusinessMessageScreen() {
     }
   };
 
-  const subscribeToMessages = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+  const subscribeToMessages = async (user) => {
     if (!user) return;
 
     // Use a unique channel name for this specific chat
@@ -98,7 +101,6 @@ export default function BusinessMessageScreen() {
           const newMsg = payload.new;
           if (newMsg.sender_id === partnerId) {
             setMessages(prev => {
-              // Avoid duplicates
               if (prev.some(m => m.id === newMsg.id)) return prev;
               return [...prev, newMsg];
             });
@@ -132,13 +134,23 @@ export default function BusinessMessageScreen() {
     };
   };
 
-  const sendMessage = async (text = null, mediaUrl = null, mediaType = null) => {
+  const sendMessage = async (text = null) => {
     const messageText = text || input.trim();
-    if (!messageText && !mediaUrl) return;
+    if (!messageText && !selectedMedia) return;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = currentUser || (await supabase.auth.getUser()).data.user;
       if (!user) return;
+
+      let mediaUrl = null;
+      let mediaType = null;
+
+      if (selectedMedia) {
+        setUploading(true);
+        mediaUrl = await uploadMedia(selectedMedia.uri, selectedMedia.type);
+        mediaType = selectedMedia.type;
+        setSelectedMedia(null);
+      }
 
       const { error } = await supabase
         .from('messages')
@@ -155,6 +167,8 @@ export default function BusinessMessageScreen() {
     } catch (err) {
       console.error('Error sending message:', err);
       Alert.alert("Error", "Failed to send message.");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -166,7 +180,7 @@ export default function BusinessMessageScreen() {
     });
 
     if (!result.canceled) {
-      uploadMedia(result.assets[0].uri, 'image');
+      setSelectedMedia({ uri: result.assets[0].uri, type: 'image' });
     }
   };
 
@@ -197,41 +211,33 @@ export default function BusinessMessageScreen() {
     await recording.stopAndUnloadAsync();
     const uri = recording.getURI();
     setRecording(null);
-    uploadMedia(uri, 'audio');
+    setSelectedMedia({ uri, type: 'audio' });
   };
 
   const uploadMedia = async (uri, type) => {
-    try {
-      setUploading(true);
-      const ext = uri.split('.').pop();
-      const fileName = `${Date.now()}.${ext}`;
-      const path = `${type}s/${fileName}`;
+    const ext = uri.split('.').pop();
+    const fileName = `${Date.now()}.${ext}`;
+    const path = `${type}s/${fileName}`;
 
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const contentType = type === 'image' ? `image/${ext}` : `audio/${ext}`;
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const contentType = type === 'image' ? `image/${ext}` : `audio/${ext}`;
 
-      const { data, error } = await supabase.storage
-        .from('chat-media')
-        .upload(path, blob, {
-          contentType,
-          cacheControl: '3600',
-          upsert: false
-        });
+    const { data, error } = await supabase.storage
+      .from('chat-media')
+      .upload(path, blob, {
+        contentType,
+        cacheControl: '3600',
+        upsert: false
+      });
 
-      if (error) throw error;
+    if (error) throw error;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('chat-media')
-        .getPublicUrl(path);
+    const { data: { publicUrl } } = supabase.storage
+      .from('chat-media')
+      .getPublicUrl(path);
 
-      sendMessage(null, publicUrl, type);
-    } catch (err) {
-      console.error('Upload error:', err);
-      Alert.alert("Error", "Failed to upload media.");
-    } finally {
-      setUploading(false);
-    }
+    return publicUrl;
   };
 
   const AudioPlayer = ({ url }) => {
@@ -364,7 +370,7 @@ export default function BusinessMessageScreen() {
           }
         >
           {messages.map((msg, index) => {
-            const isMe = msg.sender_id !== partnerId;
+            const isMe = msg.sender_id === currentUser?.id;
             const showTime = index === 0 || 
               new Date(msg.created_at).getTime() - new Date(messages[index-1].created_at).getTime() > 300000;
 
@@ -410,8 +416,11 @@ export default function BusinessMessageScreen() {
                       <Text
                         style={{
                           fontSize: 14,
-                          color: isMe ? colors.white : colors.text,
+                          color: isMe ? "#fff" : colors.text,
                           lineHeight: 20,
+                          marginTop: msg.media_type ? 8 : 0,
+                          paddingHorizontal: msg.media_type ? 8 : 0,
+                          paddingBottom: msg.media_type ? 4 : 0,
                         }}
                       >
                         {msg.text}
@@ -423,6 +432,41 @@ export default function BusinessMessageScreen() {
             );
           })}
         </ScrollView>
+      )}
+
+      {/* Media Preview */}
+      {selectedMedia && (
+        <View style={{ 
+          padding: 12, 
+          backgroundColor: colors.card, 
+          borderTopWidth: 1, 
+          borderTopColor: colors.border,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12
+        }}>
+          <View style={{ position: 'relative' }}>
+            {selectedMedia.type === 'image' ? (
+              <Image source={{ uri: selectedMedia.uri }} style={{ width: 50, height: 50, borderRadius: 8 }} />
+            ) : (
+              <View style={{ width: 50, height: 50, borderRadius: 8, backgroundColor: colors.inputBg, alignItems: 'center', justifyContent: 'center' }}>
+                <Mic size={20} color={colors.primary} />
+              </View>
+            )}
+            <TouchableOpacity 
+              onPress={() => setSelectedMedia(null)}
+              style={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#FF4B4B', borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.card }}
+            >
+              <X size={12} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 13, color: colors.text, fontWeight: '600' }}>
+              {selectedMedia.type === 'image' ? 'Image selected' : 'Voice note recorded'}
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.textMuted }}>Add a caption below or just send</Text>
+          </View>
+        </View>
       )}
 
       {/* Input bar */}
@@ -468,7 +512,7 @@ export default function BusinessMessageScreen() {
           <TextInput
             value={input}
             onChangeText={setInput}
-            placeholder="Type a message..."
+            placeholder={selectedMedia ? "Add a caption..." : "Type a message..."}
             placeholderTextColor={colors.textMuted}
             style={{
               flex: 1,
@@ -478,7 +522,7 @@ export default function BusinessMessageScreen() {
               maxHeight: 100,
             }}
             multiline
-            disabled={isRecording || uploading}
+            editable={!isRecording && !uploading}
           />
           {isRecording && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, position: 'absolute', right: 10, backgroundColor: colors.inputBg }}>
@@ -488,7 +532,7 @@ export default function BusinessMessageScreen() {
           )}
         </View>
 
-        {input.trim() || uploading ? (
+        {(input.trim() || selectedMedia || uploading) ? (
           <TouchableOpacity
             onPress={() => sendMessage()}
             disabled={uploading}
