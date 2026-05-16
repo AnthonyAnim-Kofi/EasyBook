@@ -470,12 +470,25 @@ export default function BusinessMessageScreen() {
         >
           {messages.map((msg, index) => {
             const isMe = msg.isMe ?? (String(msg.sender_id) === String(currentUser?.id));
-            const showTime = index === 0 || 
-              new Date(msg.created_at).getTime() - new Date(messages[index-1].created_at).getTime() > 300000;
+            const prev = messages[index - 1];
+            const next = messages[index + 1];
+            const curTime = new Date(msg.created_at).getTime();
+
+            const showDateHeader =
+              !prev || curTime - new Date(prev.created_at).getTime() > 300000;
+
+            // Cluster = consecutive messages from same sender within 2 minutes
+            const isLastInCluster =
+              !next ||
+              String(next.sender_id) !== String(msg.sender_id) ||
+              new Date(next.created_at).getTime() - curTime > 120000;
+
+            const status = msg.is_read ? 'Read' : msg.id ? 'Delivered' : 'Sent';
+            const statusLabel = `Message ${status.toLowerCase()}`;
 
             return (
               <View key={msg.id}>
-                {showTime && (
+                {showDateHeader && (
                   <View style={{ alignItems: 'center', marginVertical: 16 }}>
                     <Text style={{ fontSize: 10, color: colors.textMuted, fontWeight: '600' }}>
                       {format(new Date(msg.created_at), 'EEE, d MMM • p')}
@@ -484,7 +497,7 @@ export default function BusinessMessageScreen() {
                 )}
                 <View
                   style={{
-                    marginBottom: 12,
+                    marginBottom: isLastInCluster ? 12 : 3,
                     alignItems: isMe ? "flex-end" : "flex-start",
                   }}
                 >
@@ -503,8 +516,8 @@ export default function BusinessMessageScreen() {
                     }}
                   >
                     {msg.media_type === 'image' && (
-                      <Image 
-                        source={{ uri: msg.media_url }} 
+                      <Image
+                        source={{ uri: msg.media_url }}
                         style={{ width: 220, height: 220, borderRadius: 16 }}
                         contentFit="cover"
                       />
@@ -529,28 +542,39 @@ export default function BusinessMessageScreen() {
                       </Text>
                     )}
                   </View>
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 4,
-                      marginTop: 4,
-                      paddingHorizontal: 6,
-                    }}
-                  >
-                    <Text style={{ fontSize: 10.5, color: colors.textMuted, fontWeight: '500' }}>
-                      {format(new Date(msg.created_at), 'p')}
-                    </Text>
-                    {isMe && (
-                      msg.is_read ? (
-                        <CheckCheck size={13} color={colors.primary} />
-                      ) : msg.id ? (
-                        <CheckCheck size={13} color={colors.textMuted} />
-                      ) : (
-                        <Check size={13} color={colors.textMuted} />
-                      )
-                    )}
-                  </View>
+                  {isLastInCluster && (
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 4,
+                        marginTop: 4,
+                        paddingHorizontal: 6,
+                      }}
+                    >
+                      <Text style={{ fontSize: 10.5, color: colors.textMuted, fontWeight: '500' }}>
+                        {format(new Date(msg.created_at), 'p')}
+                      </Text>
+                      {isMe && (
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={() => Alert.alert(status, `This message has been ${status.toLowerCase()}.`)}
+                          accessibilityRole="image"
+                          accessibilityLabel={statusLabel}
+                          accessibilityHint="Double tap to view delivery status"
+                          hitSlop={8}
+                        >
+                          {status === 'Read' ? (
+                            <CheckCheck size={13} color={colors.primary} />
+                          ) : status === 'Delivered' ? (
+                            <CheckCheck size={13} color={colors.textMuted} />
+                          ) : (
+                            <Check size={13} color={colors.textMuted} />
+                          )}
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
                 </View>
               </View>
             );
