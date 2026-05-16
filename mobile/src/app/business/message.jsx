@@ -545,7 +545,10 @@ export default function BusinessMessageScreen() {
           }
         >
           {sortedMessages.map((msg, index) => {
-            const isMe = msg.isMe ?? (String(msg.sender_id) === String(currentUser?.id));
+            // Authoritative: who I am right now decides left/right — not stale msg.isMe
+            const isMe = currentUser
+              ? String(msg.sender_id) === String(currentUser.id)
+              : !!msg.isMe;
             const prev = sortedMessages[index - 1];
             const next = sortedMessages[index + 1];
             const curTime = new Date(msg.created_at).getTime();
@@ -574,9 +577,11 @@ export default function BusinessMessageScreen() {
                 <View
                   style={{
                     marginBottom: isLastInCluster ? 12 : 3,
-                    alignItems: isMe ? "flex-end" : "flex-start",
+                    flexDirection: 'row',
+                    justifyContent: isMe ? 'flex-end' : 'flex-start',
                   }}
                 >
+                  <View style={{ maxWidth: '80%', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
                   <View
                     style={{
                       backgroundColor: isMe ? colors.primary : colors.primarySurface,
@@ -587,7 +592,6 @@ export default function BusinessMessageScreen() {
                       borderBottomLeftRadius: isMe ? 20 : 6,
                       paddingVertical: msg.media_type === 'image' ? 4 : 12,
                       paddingHorizontal: msg.media_type === 'image' ? 4 : 16,
-                      maxWidth: "80%",
                       ...shadows.xs,
                     }}
                   >
