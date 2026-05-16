@@ -24,6 +24,8 @@ import {
   Play,
   Pause,
   X,
+  Check,
+  CheckCheck,
 } from "lucide-react-native";
 import { Image } from "expo-image";
 import { useRouter, useLocalSearchParams } from "expo-router";
