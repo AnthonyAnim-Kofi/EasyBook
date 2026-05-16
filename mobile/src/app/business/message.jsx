@@ -40,6 +40,7 @@ export default function BusinessMessageScreen() {
   const { id: partnerId, name: partnerName, avatar: partnerAvatar } = params;
   
   const [currentUser, setCurrentUser] = useState(null);
+  const [partnerProfile, setPartnerProfile] = useState(null);
   const [selectedMedia, setSelectedMedia] = useState(null); // { uri, type }
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -57,6 +58,15 @@ export default function BusinessMessageScreen() {
       if (data?.user) {
         setCurrentUser(data.user);
         fetchMessages(data.user);
+        
+        // Fetch partner profile
+        const { data: pData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', partnerId)
+          .single();
+        
+        if (pData) setPartnerProfile(pData);
         
         // Setup subscription
         const channelName = `chat-${data.user.id}-${partnerId}`;
@@ -240,39 +250,94 @@ export default function BusinessMessageScreen() {
     return publicUrl;
   };
 
-  const AudioPlayer = ({ url }) => {
+  const AudioPlayer = ({ url, isMe }) => {
     const [sound, setSound] = useState(null);
     const [playing, setPlaying] = useState(false);
+    const [status, setStatus] = useState(null);
 
-    const playSound = async () => {
-      if (sound) {
-        await sound.replayAsync();
-      } else {
-        const { sound } = await Audio.Sound.createAsync({ uri: url });
-        setSound(sound);
-        await sound.playAsync();
+    const onPlaybackStatusUpdate = (newStatus) => {
+      setStatus(newStatus);
+      if (newStatus.didJustFinish) {
+        setPlaying(false);
+        sound?.setPositionAsync(0);
       }
-      setPlaying(true);
-      sound?.setOnPlaybackStatusUpdate((status) => {
-        if (status.didJustFinish) setPlaying(false);
-      });
     };
 
-    const pauseSound = async () => {
-      await sound?.pauseAsync();
-      setPlaying(false);
+    const togglePlay = async () => {
+      if (sound) {
+        if (playing) {
+          await sound.pauseAsync();
+          setPlaying(false);
+        } else {
+          await sound.playAsync();
+          setPlaying(true);
+        }
+      } else {
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri: url },
+          { shouldPlay: true },
+          onPlaybackStatusUpdate
+        );
+        setSound(newSound);
+        setPlaying(true);
+      }
     };
+
+    useEffect(() => {
+      return () => {
+        if (sound) {
+          sound.unloadAsync();
+        }
+      };
+    }, [sound]);
+
+    const progress = (status?.positionMillis || 0) / (status?.durationMillis || 1);
+    const bars = [8, 14, 10, 18, 12, 16, 20, 14, 18, 10, 14, 8, 12, 16]; // Simulated waveform bars
+    
+    const primaryColor = isMe ? "#fff" : colors.primary;
+    const secondaryColor = isMe ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.1)";
 
     return (
-      <TouchableOpacity 
-        onPress={playing ? pauseSound : playSound}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }}
-      >
-        {playing ? <Pause size={20} color="#fff" /> : <Play size={20} color="#fff" />}
-        <View style={{ height: 2, flex: 1, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 1 }} />
-        <Text style={{ color: '#fff', fontSize: 10 }}>Voice Note</Text>
-      </TouchableOpacity>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 }}>
+        <TouchableOpacity 
+          onPress={togglePlay}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: isMe ? "rgba(255,255,255,0.2)" : colors.inputBg,
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          {playing ? <Pause size={16} color={primaryColor} fill={primaryColor} /> : <Play size={16} color={primaryColor} fill={primaryColor} />}
+        </TouchableOpacity>
+        
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 3, height: 24 }}>
+          {bars.map((h, i) => (
+            <View 
+              key={i} 
+              style={{ 
+                flex: 1,
+                height: h, 
+                borderRadius: 2, 
+                backgroundColor: (i / bars.length) < progress ? primaryColor : secondaryColor 
+              }} 
+            />
+          ))}
+        </View>
+        
+        <Text style={{ color: isMe ? "rgba(255,255,255,0.8)" : colors.textSecondary, fontSize: 10, fontWeight: '600' }}>
+          {status?.durationMillis ? formatDuration(status.positionMillis || 0) : 'Voice'}
+        </Text>
+      </View>
     );
+  };
+
+  const formatDuration = (millis) => {
+    const minutes = Math.floor(millis / 60000);
+    const seconds = ((millis % 60000) / 1000).toFixed(0);
+    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   };
 
   return (
@@ -312,7 +377,7 @@ export default function BusinessMessageScreen() {
           <ArrowLeft size={18} color={colors.text} />
         </TouchableOpacity>
         <Image
-          source={{ uri: partnerAvatar || "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150" }}
+          source={{ uri: partnerProfile?.avatar_url || partnerAvatar || "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150" }}
           style={{
             width: 40,
             height: 40,
@@ -325,7 +390,7 @@ export default function BusinessMessageScreen() {
         />
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 15, fontWeight: typography.weight.extrabold, color: colors.text }}>
-            {partnerName}
+            {partnerProfile?.business_name || partnerProfile?.username || partnerName}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#6BCB77' }} />
@@ -334,8 +399,12 @@ export default function BusinessMessageScreen() {
         </View>
         <TouchableOpacity
           onPress={() => {
-            const phone = params.phone || '+233244123456';
-            Linking.openURL(`tel:${phone}`);
+            const phone = partnerProfile?.phone || params.phone;
+            if (phone) {
+              Linking.openURL(`tel:${phone}`);
+            } else {
+              Alert.alert("Notice", "Phone number not available for this user.");
+            }
           }}
           style={{
             width: 36,
@@ -370,7 +439,8 @@ export default function BusinessMessageScreen() {
           }
         >
           {messages.map((msg, index) => {
-            const isMe = msg.sender_id === currentUser?.id;
+            // Robust check: if the sender is not the partner, it's me
+            const isMe = msg.sender_id !== partnerId;
             const showTime = index === 0 || 
               new Date(msg.created_at).getTime() - new Date(messages[index-1].created_at).getTime() > 300000;
 
@@ -409,7 +479,7 @@ export default function BusinessMessageScreen() {
                     )}
                     {msg.media_type === 'audio' && (
                       <View style={{ width: 180 }}>
-                        <AudioPlayer url={msg.media_url} />
+                        <AudioPlayer url={msg.media_url} isMe={isMe} />
                       </View>
                     )}
                     {msg.text && (
